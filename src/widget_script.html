@@ -1144,13 +1144,19 @@ window.cdiWidgetMockData = {
             const hasCloseTime = listing.closeTime && !isNaN(new Date(listing.closeTime).getTime());
             
             return `
-                <div class="cdi-listing-card" data-id="${listing.id}">
+                <div class="cdi-listing-card" data-id="${listing.id}" role="article" aria-labelledby="title-${listing.id}">
                     <div class="cdi-listing-image-container">
-                    <img src="${listing.imgMedium || listing.imgThumb}" 
-                         alt="${safeTitle}" 
-                        class="cdi-listing-image"
-                        onerror="this.onerror=null;this.src='';">
-                        ${this.config.enableQuickView ? `<button class="cdi-quick-view-btn" data-id="${listing.id}">+</button>` : ''}
+                        <img src="${listing.imgMedium || listing.imgThumb}" 
+                             alt="${safeTitle}" 
+                             class="cdi-listing-image"
+                             loading="lazy"
+                             onerror="this.onerror=null;this.src='data:image/svg+xml;base64,...';">
+                        ${this.config.enableQuickView ? `
+                            <button class="cdi-quick-view-btn" 
+                                    data-id="${listing.id}" 
+                                    aria-label="Quick view ${safeTitle}"
+                                    tabindex="0">+</button>
+                        ` : ''}
                     </div>
                         ${hasCloseTime ? `
                         <div class="cdi-countdown-container">
@@ -1167,16 +1173,19 @@ window.cdiWidgetMockData = {
                         ` : ''}
                         <div class="cdi-listing-content">
                             <div class="cdi-listing-category">${listing.categoryName ? `<small>${listing.categoryName}</small>` : ''}</div>
-                            <a href="${listing.url}" target="$_blank"><h3 class="cdi-listing-title">${safeTitle}</h3></a>                    
+                            <a href="${listing.url}" target="$_blank"><h3 id="title-${listing.id}" class="cdi-listing-title">${safeTitle}</h3></a>                    
                             <div class="cdi-current-bid">
                                 <span class="cdi-bid-label">${listing.currentBidTitle ? `${listing.currentBidTitle}:` : ''} </span>&nbsp;
                                 <span class="cdi-bid-amount">$${listing.currentBid || listing.price || ''} </span>&nbsp; 
                                 ${listing.bids ? `<span class="cdi-bids"><span class="cdi-bid-seperator">|</span> Bids: <strong>${listing.bids}</strong></span>` : ''}
                         </div>
                             ${this.config.showBidButton ? `
-                            <button class="cdi-bid-button" aria-label="${this.config.bidButtonText || listing.actionTitle || 'View Now'}" onclick="window.open('${listing.url}', '_blank')">
-                        ${this.config.bidButtonText || listing.actionTitle || 'View Now'}
-                    </button>
+                            <button class="cdi-bid-button" 
+                                    aria-label="${this.config.bidButtonText || listing.actionTitle || 'View Now'}" 
+                                    onclick="window.open('${listing.url}', '_blank')"
+                                    tabindex="0">
+                                ${this.config.bidButtonText || listing.actionTitle || 'View Now'}
+                            </button>
                             ` : ''}
                         </div>
                 </div>
