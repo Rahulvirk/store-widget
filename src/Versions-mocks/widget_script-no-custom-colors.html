@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script>
+        (function() {
+    'use strict';
+    
+    const brandColor = window.myBrandColor || "#274b76";
+    const counterBgColor =  "#b3f3ff";
+    const counterFontColor =  "#000";
+    const buttonBgColor =  "brandColor";
+    const buttonFontColor =  "#fff";
+    const borderRadius =  "15px";
+
+    const CSS_STYLES = `/* Auction Widget Main Container */
+        .auction-widget {
+            max-width: 1200px;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Widget Header Styles */
+        .widget-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .widget-title {
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .widget-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        /* Slider Container */
+        .slider-container {
+            position: relative;
+            overflow: hidden;
+            border-radius: ${borderRadius};
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            gap: 20px;
+        }
+
+        /* Listing Card Styles */
+        .listing-card {
+            flex: 0 0 360px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: ${borderRadius};
+            padding: 0px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Shimmer Effect on Hover */
+        .listing-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+            transition: left 0.6s ease;
+        }
+
+        .listing-card:hover::before {
+            left: 100%;
+        }
+
+        .listing-card:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+        }
+
+        /* Listing Image */
+        .listing-image {
+            width: 100%;
+            height: 245px;
+            object-fit: cover;
+            border-radius: 10px 10px 0 0;
+            transition: transform 0.3s ease;
+        }
+
+        .listing-card:hover .listing-image {
+            //transform: scale(1.05);
+        }
+
+        /* Listing Title */
+        .listing-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+            line-height: 1.3;
+            height: 2.6em;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            margin-top: 0px;
+        }
+
+        /* Current Bid Section */
+        .current-bid {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .bid-label {
+            font-size: 1rem;
+        }
+
+        .bid-amount {
+            font-weight: bold;
+        }
+
+        .listing-content {
+            padding: 20px;
+        }
+
+        /* Countdown Timer */
+        .countdown-container {
+            background: ${counterBgColor};
+            border-radius: 0px;
+            padding: 12px;
+            margin-top: -5px;
+            color: ${counterFontColor};
+            text-align: center;
+        }
+
+        .countdown-title {
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+            opacity: 0.8;
+        }
+
+        .countdown-timer {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+
+        /* Bid Button */
+        .bid-button {
+            width: 100%;
+            background-color: ${brandColor};
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .bid-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Navigation Buttons */
+        .nav-button {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            color: #333;
+            transition: all 0.3s ease;
+            z-index: 10;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .nav-button:hover {
+            background: white;
+            transform: translateY(-50%) scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+        }
+
+        .nav-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: translateY(-50%) scale(0.9);
+        }
+
+        .nav-prev {
+            left: 10px;
+        }
+
+        .nav-next {
+            right: 10px;
+        }
+
+        /* Dots Navigation */
+        .dots-container {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 20px;
+            padding:2px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .dot.active {
+            background: ${brandColor};
+            transform: scale(1.2);
+        }
+
+        .dot:hover {
+           background: rgba(0, 0, 0, 0.5);
+        }
+
+        /* Auto Scroll Indicator */
+        .auto-scroll-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: rgba(216, 216, 216, 0.2);
+            padding: 8px 12px;
+            border-radius: ${borderRadius};
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .auto-scroll-indicator:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .auto-scroll-indicator.paused {
+            background: rgba(255, 107, 107, 0.3);
+        }
+
+        /* Loading and Error States */
+        .loading {
+            text-align: center;
+            color: white;
+            font-size: 1.2rem;
+            padding: 40px;
+        }
+
+        .error {
+            text-align: center;
+            color: #ff6b6b;
+            background: rgba(255, 255, 255, 0.9);
+            padding: 20px;
+            border-radius: ${borderRadius};
+            margin: 20px 0;
+        }
+
+        .spinner {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-top: 3px solid white;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        /* Animations */
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .auto-scroll-indicator.active::after {
+            content: '';
+            width: 8px;
+            height: 8px;
+            background: #4ade80;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        /* Responsive Design - Tablet */
+        @media (max-width: 768px) {
+            .auction-widget {
+                margin: 10px;
+            }
+
+            .widget-title {
+                font-size: 2rem;
+            }
+
+            .listing-card {
+                flex: 0 0 320px;
+            }
+
+            .nav-button {
+                width: 40px;
+                height: 40px;
+                font-size: 1.2rem;
+            }
+
+            .nav-prev {
+                left: 5px;
+            }
+
+            .nav-next {
+                right: 5px;
+            }
+        }
+
+        /* Responsive Design - Mobile */
+        @media (max-width: 480px) {
+            .listing-card {
+                flex: 0 0 360px;
+            }
+
+            .countdown-timer {
+                gap: 4px;
+            }
+
+            .time-unit {
+                padding: 4px 6px;
+                min-width: 35px;
+            }
+
+            .time-value {
+                font-size: 0.9rem;
+            }
+        }`;
+
+    class AuctionSliderWidget {
+        constructor(config = {}) {
+            this.config = {
+                containerId: 'auction-widget-container',
+                apiUrl: 'https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api',
+                title: 'Live Auctions',
+                subtitle: 'Swipe through exclusive items that are ending soon',
+                autoScroll: true,
+                autoScrollInterval: 4000,
+                refreshInterval: 30000,
+                ...config
+            };
+            
+            this.listings = [];
+            this.currentSlide = 0;
+            this.countdownIntervals = [];
+            this.refreshInterval = null;
+            this.autoScrollInterval = null;
+            this.isAutoScrolling = this.config.autoScroll;
+            this.itemsPerView = this.calculateItemsPerView();
+            
+            this.init();
+        }
+
+        init() {
+            this.injectStyles();
+            this.createWidget();
+            this.setupEventListeners();
+            this.fetchListingsAndRender();
+            if (this.config.autoScroll) {
+                this.setupAutoScroll();
+            }
+        }
+
+        injectStyles() {
+            if (!document.getElementById('auction-widget-styles')) {
+                const style = document.createElement('style');
+                style.id = 'auction-widget-styles';
+                style.textContent = CSS_STYLES;
+                document.head.appendChild(style);
+            }
+        }
+
+        createWidget() {
+            const container = document.getElementById(this.config.containerId);
+            if (!container) {
+                console.error(`Container with ID '${this.config.containerId}' not found`);
+                return;
+            }
+
+            container.innerHTML = `
+                <div class="auction-widget">
+                    <div class="widget-header">
+                        <h1 class="widget-title">${this.config.title}</h1>
+                        <p class="widget-subtitle">${this.config.subtitle}</p>
+                    </div>
+                    
+                    <div class="auto-scroll-indicator" id="autoScrollIndicator">
+                        <span id="autoScrollText">Auto-scroll</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div id="slider-wrapper" class="slider-wrapper">
+                            <div class="loading">
+                                <div class="spinner"></div>
+                                Loading auction listings...
+                            </div>
+                        </div>
+                        
+                        <button class="nav-button nav-prev" id="prevBtn">‹</button>
+                        <button class="nav-button nav-next" id="nextBtn">›</button>
+                    </div>
+                    
+                    <div class="dots-container" id="dotsContainer"></div>
+                </div>
+            `;
+
+            this.container = document.getElementById('slider-wrapper');
+            this.prevBtn = document.getElementById('prevBtn');
+            this.nextBtn = document.getElementById('nextBtn');
+            this.dotsContainer = document.getElementById('dotsContainer');
+            this.autoScrollIndicator = document.getElementById('autoScrollIndicator');
+        }
+
+        calculateItemsPerView() {
+            const width = window.innerWidth;
+            if (width < 640) return 1;
+            if (width < 768) return 2;
+            if (width < 1024) return 2;
+            return 3;
+        }
+
+        async fetchListingsAndRender() {
+            await this.fetchListings();
+            this.renderListings();
+            this.renderDots();
+            this.startCountdowns();
+            this.updateNavigation();
+            
+            // Setup refresh interval
+            this.refreshInterval = setInterval(() => {
+                this.fetchListings();
+            }, this.config.refreshInterval);
+        }
+
+        async fetchListings() {
+            try {
+                // Mock data for demo - replace with actual API call
+                const mockData = {
+                    "jsStatus": "success",
+                    "items": [
+                        {
+                            "id": 5551964,
+                            "title": "Vintage Collectible Sports Memorabilia",
+                            "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551964",
+                            "currentBid": "87.07",
+                            "closeTime": "Sep 26, 2025, 7:29:00 PM",
+                            "imgMedium": "https://picsum.photos/400/300?random=1",
+                            "actionTitle": "Bid Now",
+                            "currentBidTitle": "Current Bid"
+                        },
+                        {
+                            "id": 5551965,
+                            "title": "Professional Photography Equipment Set",
+                            "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551965",
+                            "currentBid": "156.50",
+                            "closeTime": "Oct 15, 2025, 3:15:00 PM",
+                            "imgMedium": "https://picsum.photos/400/300?random=2",
+                            "actionTitle": "Bid Now",
+                            "currentBidTitle": "Current Bid"
+                        },
+                        {
+                            "id": 5551966,
+                            "title": "Antique Furniture Collection",
+                            "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551966",
+                            "currentBid": "432.75",
+                            "closeTime": "Aug 30, 2025, 11:00:00 AM",
+                            "imgMedium": "https://picsum.photos/400/300?random=3",
+                            "actionTitle": "Bid Now",
+                            "currentBidTitle": "Current Bid"
+                        },
+                        {
+                            "id": 5551967,
+                            "title": "Luxury Watch Collection",
+                            "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551967",
+                            "currentBid": "1250.00",
+                            "closeTime": "Nov 05, 2025, 6:00:00 PM",
+                            "imgMedium": "https://picsum.photos/400/300?random=4",
+                            "actionTitle": "Bid Now",
+                            "currentBidTitle": "Current Bid"
+                        },
+                        {
+                            "id": 5551968,
+                            "title": "Rare Art Prints and Paintings",
+                            "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551968",
+                            "currentBid": "675.25",
+                            "closeTime": "Dec 12, 2025, 2:30:00 PM",
+                            "imgMedium": "https://picsum.photos/400/300?random=5",
+                            "actionTitle": "Bid Now",
+                            "currentBidTitle": "Current Bid"
+                        }
+                    ]
+                };
+
+                // Uncomment for actual API:
+                // const response = await fetch(this.config.apiUrl);
+                // const data = await response.json();
+                
+                const data = mockData;
+
+                if (data.jsStatus === 'success') {
+                    this.listings = data.items || [];
+                } else {
+                    throw new Error('API returned error status');
+                }
+            } catch (error) {
+                console.error('Error fetching listings:', error);
+                this.showError('Failed to load auction listings. Please try again later.');
+            }
+        }
+
+        renderListings() {
+            if (this.listings.length === 0) {
+                this.container.innerHTML = '<div class="error">No auction listings available at this time.</div>';
+                return;
+            }
+
+            const listingsHTML = this.listings.map(listing => {
+                return `
+                    <div class="listing-card" data-id="${listing.id}">
+                        <img src="${listing.imgMedium || listing.imgThumb}" 
+                            alt="${listing.title}" 
+                            class="listing-image"
+                            onerror="this.onerror=null;this.src='https://via.placeholder.com/400x300?text=No+Image';">
+                        <div class="countdown-container">
+                            <div class="countdown-timer" id="countdown-${listing.id}">
+                                <div class="time-unit">
+                                    <span class="time-value days">--</span>
+                                    <span class="time-label">Days</span>
+                                </div>
+                                <div class="time-unit">
+                                    <span class="time-value hours">--</span>:<span class="time-value minutes">--</span>:<span class="time-value seconds">--</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="listing-content">
+                            <h3 class="listing-title">${listing.title}</h3>                     
+                            <div class="current-bid">
+                                <span class="bid-label">${listing.currentBidTitle || 'Current Bid'}</span>:&nbsp;
+                                <span class="bid-amount">$${listing.currentBid}</span>
+                            </div>
+                            <button class="bid-button" onclick="window.open('${listing.url}', '_blank')">
+                                ${listing.actionTitle || 'Bid Now'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            this.container.innerHTML = listingsHTML;
+        }
+
+        renderDots() {
+            const totalDots = Math.max(0, this.listings.length - this.itemsPerView + 1);
+            this.dotsContainer.innerHTML = '';
+            
+            for (let i = 0; i < totalDots; i++) {
+                const dot = document.createElement('div');
+                dot.className = `dot ${i === this.currentSlide ? 'active' : ''}`;
+                dot.addEventListener('click', () => this.goToSlide(i));
+                this.dotsContainer.appendChild(dot);
+            }
+        }
+
+        setupEventListeners() {
+            if (this.prevBtn) this.prevBtn.addEventListener('click', () => this.prevSlide());
+            if (this.nextBtn) this.nextBtn.addEventListener('click', () => this.nextSlide());
+            
+            // Touch/swipe support
+            let startX = 0;
+            let isDragging = false;
+
+            if (this.container) {
+                this.container.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    isDragging = true;
+                    this.pauseAutoScroll();
+                });
+
+                this.container.addEventListener('touchend', (e) => {
+                    if (!isDragging) return;
+                    isDragging = false;
+                    
+                    const endX = e.changedTouches[0].clientX;
+                    const diffX = startX - endX;
+                    
+                    if (Math.abs(diffX) > 50) {
+                        if (diffX > 0) {
+                            this.nextSlide();
+                        } else {
+                            this.prevSlide();
+                        }
+                    }
+                    
+                    this.resumeAutoScroll();
+                });
+
+                // Pause auto-scroll on hover
+                this.container.addEventListener('mouseenter', () => this.pauseAutoScroll());
+                this.container.addEventListener('mouseleave', () => this.resumeAutoScroll());
+            }
+
+            // Auto-scroll toggle
+            if (this.autoScrollIndicator) {
+                this.autoScrollIndicator.addEventListener('click', () => this.toggleAutoScroll());
+            }
+
+            // Window resize
+            window.addEventListener('resize', () => {
+                this.itemsPerView = this.calculateItemsPerView();
+                this.renderDots();
+                this.updateSliderPosition();
+                this.updateNavigation();
+            });
+        }
+
+        setupAutoScroll() {
+            this.autoScrollInterval = setInterval(() => {
+                if (this.isAutoScrolling) {
+                    this.nextSlide();
+                }
+            }, this.config.autoScrollInterval);
+            
+            this.updateAutoScrollIndicator();
+        }
+
+        toggleAutoScroll() {
+            this.isAutoScrolling = !this.isAutoScrolling;
+            this.updateAutoScrollIndicator();
+        }
+
+        pauseAutoScroll() {
+            this.isAutoScrolling = false;
+            this.updateAutoScrollIndicator();
+        }
+
+        resumeAutoScroll() {
+            if (this.config.autoScroll) {
+                this.isAutoScrolling = true;
+                this.updateAutoScrollIndicator();
+            }
+        }
+
+        updateAutoScrollIndicator() {
+            if (!this.autoScrollIndicator) return;
+            
+            const text = document.getElementById('autoScrollText');
+            
+            if (this.isAutoScrolling) {
+                this.autoScrollIndicator.classList.remove('paused');
+                this.autoScrollIndicator.classList.add('active');
+                if (text) text.textContent = 'Auto-scroll';
+            } else {
+                this.autoScrollIndicator.classList.add('paused');
+                this.autoScrollIndicator.classList.remove('active');
+                if (text) text.textContent = 'Paused';
+            }
+        }
+
+        goToSlide(index) {
+            const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+            this.currentSlide = Math.max(0, Math.min(index, maxSlide));
+            this.updateSliderPosition();
+            this.updateNavigation();
+            this.updateDots();
+        }
+
+        nextSlide() {
+            const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+            if (this.currentSlide >= maxSlide) {
+                this.currentSlide = 0;
+            } else {
+                this.currentSlide++;
+            }
+            this.updateSliderPosition();
+            this.updateNavigation();
+            this.updateDots();
+        }
+
+        prevSlide() {
+            const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+            if (this.currentSlide <= 0) {
+                this.currentSlide = maxSlide;
+            } else {
+                this.currentSlide--;
+            }
+            this.updateSliderPosition();
+            this.updateNavigation();
+            this.updateDots();
+        }
+
+        updateSliderPosition() {
+            if (!this.container) return;
+            const cardWidth = 320 + 20;
+            const translateX = -this.currentSlide * cardWidth;
+            this.container.style.transform = `translateX(${translateX}px)`;
+        }
+
+        updateNavigation() {
+            const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+            if (this.prevBtn) this.prevBtn.disabled = this.listings.length <= this.itemsPerView;
+            if (this.nextBtn) this.nextBtn.disabled = this.listings.length <= this.itemsPerView;
+        }
+
+        updateDots() {
+            if (!this.dotsContainer) return;
+            const dots = this.dotsContainer.querySelectorAll('.dot');
+            dots.forEach((dot, index) => {
+                dot.classList.toggle('active', index === this.currentSlide);
+            });
+        }
+
+        startCountdowns() {
+            this.countdownIntervals.forEach(interval => clearInterval(interval));
+            this.countdownIntervals = [];
+
+            this.listings.forEach(listing => {
+                const countdownElement = document.getElementById(`countdown-${listing.id}`);
+                if (!countdownElement) return;
+
+                const updateCountdown = () => {
+                    const now = new Date().getTime();
+                    const closeTime = new Date(listing.closeTime).getTime();
+                    const timeLeft = closeTime - now;
+
+                    if (timeLeft <= 0) {
+                        countdownElement.innerHTML = '<div style="color: #ff6b6b; font-weight: bold; text-align: center;">Auction Ended</div>';
+                        return;
+                    }
+
+                    const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                    const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                    const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                    const daysEl = countdownElement.querySelector('.days');
+                    const hoursEl = countdownElement.querySelector('.hours');
+                    const minutesEl = countdownElement.querySelector('.minutes');
+                    const secondsEl = countdownElement.querySelector('.seconds');
+
+                    if (daysEl) daysEl.textContent = days.toString().padStart(2, '0');
+                    if (hoursEl) hoursEl.textContent = hours.toString().padStart(2, '0');
+                    if (minutesEl) minutesEl.textContent = minutes.toString().padStart(2, '0');
+                    if (secondsEl) secondsEl.textContent = seconds.toString().padStart(2, '0');
+                };
+
+                updateCountdown();
+                const interval = setInterval(updateCountdown, 1000);
+                this.countdownIntervals.push(interval);
+            });
+        }
+
+        showError(message) {
+            if (this.container) {
+                this.container.innerHTML = `<div class="error">${message}</div>`;
+            }
+        }
+
+        destroy() {
+            this.countdownIntervals.forEach(interval => clearInterval(interval));
+            if (this.refreshInterval) clearInterval(this.refreshInterval);
+            if (this.autoScrollInterval) clearInterval(this.autoScrollInterval);
+        }
+    }
+
+    // Global function to initialize the widget
+    window.initAuctionWidget = function(config) {
+        return new AuctionSliderWidget(config);
+    };
+
+    // Auto-initialize if container exists
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            if (document.getElementById('auction-widget-container')) {
+                window.auctionWidget = new AuctionSliderWidget();
+            }
+        });
+    } else {
+        if (document.getElementById('auction-widget-container')) {
+            window.auctionWidget = new AuctionSliderWidget();
+        }
+    }
+})();
+    </script>
+<body>
+   <div id="auction-widget-container"></div>
+</body>
+</html>

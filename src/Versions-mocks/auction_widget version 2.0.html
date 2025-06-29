@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1">
+<meta charset="UTF-8">
+<title>CDI Widget Configuration</title>
+<link rel="icon" href="https://www.commercedynamics.com/wp-content/uploads/2018/06/cropped-cd-logo-sm-32x32.png" sizes="32x32" />
+<link rel="icon" href="https://www.commercedynamics.com/wp-content/uploads/2018/06/cropped-cd-logo-sm-192x192.png" sizes="192x192" />
+<link rel="apple-touch-icon" href="https://www.commercedynamics.com/wp-content/uploads/2018/06/cropped-cd-logo-sm-180x180.png" />
+<meta name="title" content="CDI Widget Configuration">
+<meta property="og:image" content="https://www.commercedynamics.com/wp-content/uploads/2025/05/cd-logo-square-1000-2.png" />
+<meta property="og:image:width" content="2000" />
+<meta property="og:image:height" content="1000" />
+<meta property="og:image:type" content="image/png" />
+<script src="https://cdn.jsdelivr.net/npm/terser@5.27.1/dist/bundle.min.js"></script>
+<style>
+    body{
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+    #widget-configurator {
+        max-width: 700px;
+        margin: 30px auto 20px auto;
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+        padding: 32px 28px 24px 28px;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    #widget-configurator h3 {
+        margin-top: 0;
+        margin-bottom: 18px;
+        font-size: 1.5rem;
+        color: #274b76;
+        letter-spacing: 1px;
+    }
+    #widget-configurator label {
+        font-size: 1rem;
+        color: #333;
+        margin-bottom: 6px;
+        display: block;
+    }
+    #widget-configurator input[type="text"],
+    #widget-configurator input[type="number"] {
+        width: 100%;
+        padding: 7px 10px;
+        border: 1px solid #d0d7de;
+        border-radius: 6px;
+        font-size: 1rem;
+        margin-bottom: 10px;
+        background: #f8fafc;
+        transition: border 0.2s;
+        box-sizing: border-box;
+        margin-top:5px;
+    }
+    #widget-configurator input[type="text"]:focus,
+    #widget-configurator input[type="number"]:focus {
+        border: 1.5px solid #274b76;
+        outline: none;
+    }
+    #widget-configurator input[type="color"] {
+        width: 40px;
+        height: 32px;
+        border: none;
+        background: none;
+        margin-left: 8px;
+        vertical-align: middle;
+        cursor: pointer;
+    }
+    #widget-configurator .config-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 32px;
+        margin-bottom: 18px;
+    }
+    #widget-configurator .color-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 18px 32px;
+        margin-bottom: 18px;
+    }
+    #widget-configurator .color-grid label {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 0;
+    }
+    #widget-configurator button {
+        background: #274b76;
+        color: #fff;
+        border: none;
+        border-radius: 8px;
+        padding: 12px 28px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background 0.2s, box-shadow 0.2s;
+        box-shadow: 0 2px 8px rgba(39,75,118,0.08);
+    }
+    #widget-configurator button:hover {
+        background: linear-gradient(90deg, #4fc3f7 0%, #274b76 100%);
+    }
+    @media (max-width: 700px) {
+        #widget-configurator { padding: 18px 8px; }
+        #widget-configurator .config-grid, #widget-configurator .color-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+<script id="widget-main-script">
+    (function() {
+        'use strict';
+        
+        function getWidgetColors() {
+            return {
+                counterBgColor: window.myCounterBgColor || "#b3f3ff",
+                counterFontColor: window.myCounterFontColor || "#000",
+                buttonBgColor: window.myButtonBgColor || "#274b76",
+                buttonFontColor: window.myButtonFontColor || "#fff",
+                dotColor: window.myDotColor || "#274b76",
+                borderRadius: window.myBorderRadius || "15px"
+            };
+        }
+
+        class AuctionSliderWidget {
+            constructor(config = {}) {
+                this.config = {
+                    containerId: window.myContainerId || 'cd-ondemand-container',
+                    apiUrl: window.myApiUrl || 'https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api',
+                    title: window.myWidgetTitle || 'Live Auctions',
+                    subtitle: window.myWidgetSubtitle || 'Swipe through exclusive items that are ending soon',
+                    autoScroll: true,
+                    autoScrollInterval: window.myAutoScrollInterval || 4000,
+                    refreshInterval: window.myRefreshInterval || 30000,
+                    enableQuickView: window.myEnableQuickView !== false,
+                    showBidButton: window.myShowBidButton !== false,
+                    ...config
+                };
+                
+                this.listings = [];
+                this.currentSlide = 0;
+                this.countdownIntervals = [];
+                this.refreshInterval = null;
+                this.autoScrollInterval = null;
+                this.isAutoScrolling = this.config.autoScroll;
+                this.itemsPerView = this.calculateItemsPerView();
+                
+                this.init();
+            }
+
+            init() {
+                this.injectStyles();
+                this.createWidget();
+                this.setupEventListeners();
+                this.setupUserActivityTracking();
+                this.fetchListingsAndRender();
+                if (this.config.autoScroll) {
+                    this.setupAutoScroll();
+                }
+            }
+
+            injectStyles() {
+                // Remove old style if exists
+                const oldStyle = document.getElementById('auction-widget-styles');
+                if (oldStyle) oldStyle.remove();
+
+                // Get latest colors
+                const colors = getWidgetColors();
+                const dotColor = colors.dotColor;
+                const counterBgColor = colors.counterBgColor;
+                const counterFontColor = colors.counterFontColor;
+                const buttonBgColor = colors.buttonBgColor;
+                const buttonFontColor = colors.buttonFontColor;
+                const borderRadius = colors.borderRadius;
+                const borderRadiusValue = parseFloat(borderRadius) || 15; // fallback to 10 if invalid
+                const halfBorderRadius = (borderRadiusValue / 2) + 'px';
+                // Generate CSS with latest colors
+                const CSS_STYLES = `/* CDI Auction Widget - Scoped Styles */
+                    .cdi-auction-widget-container {
+                        max-width: 1500px;
+                        margin: 0 auto;
+                        position: relative;
+                        overflow: hidden;
+                        box-sizing: border-box;
+                        font-family: inherit;
+                    }
+
+                    .cdi-auction-widget-container * {
+                        box-sizing: border-box;
+                    }
+
+                    /* Widget Header Styles */
+                    .cdi-auction-widget-container .cdi-widget-header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-widget-title {
+                        font-size: 2rem;
+                        font-weight: bold;
+                        margin-bottom: 10px;
+                        color: #333;
+                        margin-top: 0;
+                    }
+
+                    .cdi-auction-widget-container .cdi-widget-subtitle {
+                        font-size: 1.1rem;
+                        opacity: 0.9;
+                        color: #666;
+                        margin: 0;
+                    }
+
+                    /* Slider Container */
+                    .cdi-auction-widget-container .cdi-slider-container {
+                        position: relative;
+                        overflow: hidden;
+                        border-radius: ${borderRadius};
+                        background: rgba(255, 255, 255, 0.1);
+                        padding: 20px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-slider-wrapper {
+                        display: flex;
+                        transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+                        gap: 30px;
+                    }
+
+                    /* Listing Card Styles */
+                    .cdi-auction-widget-container .cdi-listing-card {
+                        flex: 0 0 calc(25% - 10px);
+                        background: rgba(255, 255, 255, 0.95);
+                        border-radius: ${borderRadius};
+                        padding: 0px;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                        transition: all 0.3s ease;
+                        border: 1px solid rgba(255, 255, 255, 0.2);
+                        position: relative;
+                        overflow: hidden;
+                        min-width: 280px; /* Minimum width to prevent too narrow cards */
+                    }
+
+                    /* Shimmer Effect on Hover */
+                    .cdi-auction-widget-container .cdi-listing-card::before {
+                        content: '';
+                        position: absolute;
+                        top: 0;
+                        left: -100%;
+                        width: 100%;
+                        height: 100%;
+                        background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+                        transition: left 0.6s ease;
+                        pointer-events: none;
+                    }
+
+                    .cdi-auction-widget-container .cdi-listing-card:hover::before {
+                        left: 100%;
+                    }
+
+                    .cdi-auction-widget-container .cdi-listing-card:hover {
+                        transform: translateY(-5px) scale(1.02);
+                        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
+                    }
+
+                    /* Listing Image */
+                    .cdi-auction-widget-container .cdi-listing-image {
+                        width: 100%;
+                        height: 245px;
+                        object-fit: cover;
+                        border-radius: ${borderRadius} ${borderRadius} 0 0;
+                        transition: transform 0.3s ease;
+                        display: block;
+                        -webkit-transition: all 1.5s ease;
+                        transition: all 1.5s ease;
+                    }
+                    .cdi-auction-widget-container .cdi-listing-card:hover .cdi-listing-image {
+                        -webkit-transform: scale(1.2);
+                        -ms-transform: scale(1.2);
+                        transform: scale(1.2);
+                        -webkit-filter: grayscale(20%) contrast(105%) brightness(105%);
+                        filter: grayscale(20%) contrast(105%) brightness(105%);
+                    }
+                    .cdi-auction-widget-container .cdi-listing-category {
+                        color:#666;
+                        height:20px;
+                        display:none;
+                    }
+                    /* Listing Title */
+                    .cdi-auction-widget-container .cdi-listing-title {
+                        font-size: 1.2rem;
+                        font-weight: bold;
+                        margin-top: 0px;
+                        color: #333;
+                        line-height: 1.3;
+                        height: 2.6em;
+                        overflow: hidden;
+                        margin-bottom:20px;
+                        /* Modern browsers */
+                        display: -webkit-box;
+                        -webkit-line-clamp: 2;
+                        -webkit-box-orient: vertical;
+                        /* Fallback for older browsers */
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                    }
+
+                    /* Add this for modern browsers that support line-clamp */
+                    @supports (-webkit-line-clamp: 2) {
+                        .cdi-auction-widget-container .cdi-listing-title {
+                            display: -webkit-box;
+                            -webkit-line-clamp: 2;
+                            -webkit-box-orient: vertical;
+                            white-space: normal;
+                        }
+                    }
+
+                    /* Current Bid Section */
+                    .cdi-auction-widget-container .cdi-current-bid {
+                        display: flex;
+                        align-items: center;
+                        margin-bottom: 20px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-bid-label {
+                        font-size: 1rem;
+                    }
+
+                    .cdi-auction-widget-container .cdi-bid-amount {
+                        font-weight: bold;
+                        color: #333;
+                    }
+
+                    .cdi-auction-widget-container .cdi-listing-content {
+                        padding: 20px;
+                    }
+                    .cdi-auction-widget-container .cdi-listing-content a{
+                        text-decoration:none;
+                    }
+                    .cdi-auction-widget-container .cdi-listing-content .cdi-bid-seperator{
+                        color: #bbb;
+                        font-size: 0.9rem;
+                    }
+
+                    /* Countdown Timer */
+                    .cdi-auction-widget-container .cdi-countdown-container {
+                        background: ${counterBgColor};
+                        border-radius: 0px;
+                        padding: 12px;
+                        margin-top: -5px;
+                        color: ${counterFontColor};
+                        text-align: center;
+                    }
+
+                    .cdi-auction-widget-container .cdi-countdown-title {
+                        font-size: 0.8rem;
+                        margin-bottom: 8px;
+                        opacity: 0.8;
+                    }
+
+                    .cdi-auction-widget-container .cdi-countdown-timer {
+                        display: flex;
+                        justify-content: center;
+                        gap: 8px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-time-unit {
+                        display: flex;
+                        flex-direction: row;
+                        justify-content:center;
+                        align-items: center;
+                        min-width: 40px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-time-value {
+                        font-weight: bold;
+                        font-size: 1rem;
+                    }
+
+                    .cdi-auction-widget-container .cdi-time-label {
+                        font-size: 1rem;
+                        font-weight: bold;
+                    }
+
+                    /* Bid Button */
+                    .cdi-auction-widget-container .cdi-bid-button {
+                        width: 100%;
+                        background-color: ${buttonBgColor};
+                        color: ${buttonFontColor};
+                        border: none;
+                        padding: 10px 16px;
+                        border-radius: ${halfBorderRadius};
+                        font-size: 1rem;
+                        font-weight: bold;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        letter-spacing: 1px;
+                                        font-family: inherit;
+                    }
+
+                    .cdi-auction-widget-container .cdi-bid-button:hover {
+                        transform: translateY(-2px);
+                        --shadow-color: ${buttonBgColor};
+                        --shadow-opacity: 0.4;
+                        box-shadow: 0 4px 6px color-mix(in srgb, var(--shadow-color) calc(var(--shadow-opacity) * 100%), transparent);
+                    }
+
+                    /* Navigation Buttons */
+                    .cdi-auction-widget-container .cdi-nav-button {
+                        position: absolute;
+                        top: 50%;
+                        transform: translateY(-50%);
+                        background: rgba(255, 255, 255, 0.9);
+                        border: none;
+                        width: 45px;
+                        height: 45px;
+                        border-radius: 50%;
+                        cursor: pointer;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 1.5rem;
+                        color: #333;
+                        transition: all 0.3s ease;
+                        z-index: 10;
+                        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+                    }
+
+                    .cdi-auction-widget-container .cdi-nav-button:hover {
+                        background: white;
+                        transform: translateY(-50%) scale(1.1);
+                        box-shadow: 9px 9px 33px #d1d1d1, -9px -9px 33px #ffffff;
+                    }
+
+                    .cdi-auction-widget-container .cdi-nav-button:disabled {
+                        opacity: 0.5;
+                        cursor: not-allowed;
+                        transform: translateY(-50%) scale(0.9);
+                    }
+
+                    .cdi-auction-widget-container .cdi-nav-prev {
+                        left: 10px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-nav-next {
+                        right: 10px;
+                    }
+
+                    /* Dots Navigation */
+                        .cdi-auction-widget-container .cdi-dots-container {
+                        display: flex;
+                        justify-content: center;
+                        gap: 8px;
+                        margin-top: 20px;
+                        padding: 2px;
+                    }
+
+                    .cdi-auction-widget-container .cdi-dot {
+                        width: 12px;
+                        height: 12px;
+                        border-radius: 50%;
+                        background: rgba(0, 0, 0, 0.2);
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                    }
+
+                    .cdi-auction-widget-container .cdi-dot.active {
+                        background: ${dotColor};
+                        transform: scale(1.2);
+                    }
+
+                    .cdi-auction-widget-container .cdi-dot:hover {
+                        background: rgba(0, 0, 0, 0.5);
+                    }
+
+                    /* Auto Scroll Indicator */
+                    .cdi-auction-widget-container .cdi-auto-scroll-indicator {
+                        position: absolute;
+                        top: 15px;
+                        right: 15px;
+                        background: rgba(216, 216, 216, 0.2);
+                        padding: 8px 12px;
+                        border-radius: ${borderRadius};
+                        font-size: 0.8rem;
+                        display: flex;
+                        align-items: center;
+                        gap: 8px;
+                        cursor: pointer;
+                        transition: all 0.3s ease;
+                        color: #333;
+                    }
+                    @media (max-width: 950px) {
+                        .cdi-auction-widget-container .cdi-auto-scroll-indicator {
+                            display:none;
+                        }
+                    }
+
+                    .cdi-auction-widget-container .cdi-auto-scroll-indicator:hover {
+                        background: rgba(255, 255, 255, 0.3);
+                    }
+
+                    .cdi-auction-widget-container .cdi-auto-scroll-indicator.paused {
+                        background: rgba(255, 107, 107, 0.3);
+                    }
+
+                    /* Loading and Error States */
+                    .cdi-auction-widget-container .cdi-loading {
+                        text-align: center;
+                        color: #333;
+                        font-size: 1.2rem;
+                        padding: 40px;
+                        margin:auto;
+                    }
+
+                    .cdi-auction-widget-container .cdi-error {
+                        text-align: center;
+                        color: #ff6b6b;
+                        background: rgba(255, 255, 255, 0.9);
+                        padding: 20px;
+                        border-radius: ${borderRadius};
+                        margin: auto;
+                    }
+
+                    .cdi-auction-widget-container .cdi-spinner {
+                        border: 3px solid rgba(0, 0, 0, 0.3);
+                        border-top: 3px solid  ${dotColor};
+                        border-radius: 50%;
+                        width: 30px;
+                        height: 30px;
+                        animation: cdi-spin 1s linear infinite;
+                        margin: 0 auto 15px;
+                    }
+
+                    /* Animations */
+                    @keyframes cdi-spin {
+                        0% { transform: rotate(0deg); }
+                        100% { transform: rotate(360deg); }
+                    }
+
+                    @keyframes cdi-pulse {
+                        0%, 100% { opacity: 1; }
+                        50% { opacity: 0.5; }
+                    }
+
+                    .cdi-auction-widget-container .cdi-auto-scroll-indicator.active::after {
+                        content: '';
+                        width: 8px;
+                        height: 8px;
+                        background: #4ade80;
+                        border-radius: 50%;
+                        animation: cdi-pulse 2s infinite;
+                    }
+
+                    /* Responsive Design */
+                    @media (max-width: 1320px) {
+                        .cdi-auction-widget-container .cdi-listing-card {
+                            flex: 0 0 calc(33.33% - 20px);
+                            min-width: 280px;
+                        }
+                    }
+                    @media (max-width: 950px) {
+                        .cdi-auction-widget-container {
+                            margin: 10px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-widget-title {
+                            font-size: 1.8rem;
+                        }
+
+                        .cdi-auction-widget-container .cdi-listing-card {
+                            flex: 0 0 calc(50% - 10px);
+                            min-width: 260px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-nav-button {
+                            width: 40px;
+                            height: 40px;
+                            font-size: 1.2rem;
+                        }
+
+                        .cdi-auction-widget-container .cdi-nav-prev {
+                            left: 5px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-nav-next {
+                            right: 5px;
+                        }
+                    }
+
+                    @media (max-width: 640px) {
+                        .cdi-auction-widget-container .cdi-listing-card {
+                            flex: 0 0 calc(100% - 10px); /* Include the gap */
+                            min-width: 240px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-countdown-timer {
+                            gap: 4px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-time-unit {
+                            padding: 4px 6px;
+                            min-width: 35px;
+                        }
+
+                        .cdi-auction-widget-container .cdi-time-value {
+                            font-size: 0.9rem;
+                        }
+                    }
+
+                    @media (max-width: 480px) {
+                        .cdi-auction-widget-container .cdi-listing-card {
+                            flex: 0 0 calc(100% - 30px); /* Include the gap */
+                            min-width: 220px;
+                        }
+                    }
+                    .cdi-auction-widget-container .cdi-listing-image-container {
+                        position: relative;
+                        overflow: hidden;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-btn {
+                        display: none;
+                        position: absolute;
+                        top: 50%;
+                        left: 50%;
+                        transform: translateX(-50%);
+                        background: rgba(255, 255, 255, 0.9);
+                        color: rgba(0, 0, 0, 0.7);
+                        border: none;
+                        border-radius: 50%;
+                        width: 45px;
+                        height: 45px;
+                        font-size: 1.6rem;
+                        cursor: pointer;
+                        opacity: 0.9;
+                        z-index: 2;
+                        transition: all 0.3s ease;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-btn:hover {
+                        box-shadow: 9px 9px 33px #d1d1d1, -9px -9px 33px #ffffff;
+                        transform: translateX(-50%) scale(1.1);
+                    }
+                    .cdi-auction-widget-container .cdi-listing-card:hover .cdi-quick-view-btn {
+                        display: block;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-modal {
+                        display: none;
+                        position: fixed;
+                        z-index: 9999;
+                        left: 0; top: 0; width: 100vw; height: 100vh;
+                        background: rgba(0,0,0,0.5);
+                        align-items: center; justify-content: center;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-modal-content {
+                        background: rgba(255, 255, 255, 0.95);
+                        border-radius: ${borderRadius};
+                        padding: 45px 45px;
+                        max-width: 600px;
+                        width: 90vw;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+                        position: relative;
+                        text-align: center;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-modal-content p{
+                        font-size: 0.8rem;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-modal-content .cdi-listing-content p{
+                        color: #666;
+                        font-size: 0.8rem;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-modal-content .cdi-listing-content h3{
+                        margin-top:0px;
+                    }
+                    .cdi-auction-widget-container .cdi-quick-view-close {
+                        position: absolute;
+                        top: 0px; right: 15px;
+                        font-size: 2rem;
+                        color: ${dotColor};
+                        cursor: pointer;
+                        font-weight: bold;
+                    }
+                    .cdi-auction-widget-container .cdi-carousel-btn {
+                        transition: background 0.2s, box-shadow 0.2s;
+                    }
+                    .cdi-auction-widget-container .cdi-carousel-btn:hover {
+                        background: ${dotColor};
+                    }`;
+                    
+                    const style = document.createElement('style');
+                    style.id = 'auction-widget-styles';
+                    style.textContent = CSS_STYLES;
+                    document.head.appendChild(style);
+            }
+
+            createWidget() {
+                const container = document.getElementById(this.config.containerId);
+                if (!container) {
+                    // Show error message
+                    const errorMessage = `Widget Error: Container with ID '${this.config.containerId}' not found.`;
+                    console.error(errorMessage);
+                    return;
+                }
+                if (container) {
+                // Clear the container first
+                container.innerHTML = '';
+                // Create the widget structure
+                container.innerHTML = `
+                    <div class="cdi-auction-widget-container">
+                        <div class="cdi-widget-header">
+                            <h1 class="cdi-widget-title">${this.config.title}</h1>
+                            <p class="cdi-widget-subtitle">${this.config.subtitle}</p>
+                        </div>
+                        <div class="cdi-auto-scroll-indicator" id="autoScrollIndicator">
+                            <span id="autoScrollText">Auto-scroll</span>
+                        </div>
+                        <div class="cdi-slider-container">
+                            <div id="slider-wrapper" class="cdi-slider-wrapper">
+                                <div class="cdi-loading">
+                                    <div class="cdi-spinner"></div>
+                                </div>
+                            </div>
+                            <button class="cdi-nav-button cdi-nav-prev" id="prevBtn">&#8249;</button>
+                            <button class="cdi-nav-button cdi-nav-next" id="nextBtn">&#8250;</button>
+                        </div>
+                        
+                        <div class="cdi-dots-container" id="dotsContainer"></div>
+                    </div>`;
+
+                    // Get references to elements
+                this.container = document.getElementById('slider-wrapper');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+                this.dotsContainer = document.getElementById('dotsContainer');
+                this.autoScrollIndicator = document.getElementById('autoScrollIndicator');
+                }
+
+                const widgetContainer = document.querySelector(`#${this.config.containerId} .cdi-auction-widget-container`);
+                if (widgetContainer && !widgetContainer.querySelector('#cdiQuickViewModal')) {
+                    const modal = document.createElement('div');
+                    modal.id = 'cdiQuickViewModal';
+                    modal.className = 'cdi-quick-view-modal';
+                    modal.style.display = 'none';
+                    widgetContainer.appendChild(modal);
+                }
+            }
+
+            calculateItemsPerView() {
+                const width = window.innerWidth;
+                if (width < 640) return 1;
+                if (width < 950) return 2;
+                if (width < 1024) return 2;
+                if (width < 1320) return 3;
+                return 4;
+            }
+
+            async fetchListingsAndRender() {
+                await this.fetchListings();
+                this.renderListings();
+                this.renderDots();
+                this.startCountdowns();
+                this.updateNavigation();
+                
+                // Setup refresh interval
+                this.refreshInterval = setInterval(() => {
+                    this.fetchListings();
+                }, this.config.refreshInterval);
+            }
+
+            async fetchListings() {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                    
+                    //const response = await fetch(this.config.apiUrl, {
+                    //    signal: controller.signal
+                    //});
+                    
+                    clearTimeout(timeoutId);
+
+                    // Mock data for demo - replace with actual API call
+                    const mockData = {
+                        "jsStatus": "success",
+                        "items": [
+                            {
+                                "id": 5551964,
+                                "title": "Vintage Collectible Sports Memorabilia",
+                                "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551964",
+                                "currentBid": "87.07",
+                                "closeTime": "Sep 26, 2025, 7:29:00 PM",
+                                "imgMedium": "https://picsum.photos/400/300?random=1",
+                                "imgMedium2": "https://picsum.photos/400/300?random=2",
+                                "actionTitle": "Bid Now",
+                                "currentBidTitle": "Current Bid",
+                                "desc": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla maximus arcu et augue vulputate, quis vestibulum libero rhoncus. Nunc a dignissim purus, facilisis dictum sem. Sed tempor dolor ac pellentesque gravida. Sed scelerisque malesuada dictum. In et luctus lorem, ut porta ex.",
+                                "categoryName": "Travel",
+                                "bids": "10"
+                            },
+                            {
+                                "id": 5551965,
+                                "title": "Professional Photography Equipment Set",
+                                "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551965",
+                                "currentBid": "156.50",
+                                "closeTime": "Oct 15, 2025, 3:15:00 PM",
+                                "imgMedium": "https://picsum.photos/400/300?random=2",
+                                "actionTitle": "Bid Now",
+                                "currentBidTitle": "Current Bid",
+                                "desc": "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nulla maximus arcu et augue vulputate, quis vestibulum libero rhoncus. Nunc a dignissim purus, facilisis dictum sem. Sed tempor dolor ac pellentesque gravida. Sed scelerisque malesuada dictum. In et luctus lorem, ut porta ex.",
+                                "categoryName": "Music",
+                                "bids": "3"
+                            },
+                            {
+                                "id": 5551966,
+                                "title": "Antique Furniture Collection",
+                                "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551966",
+                                "currentBid": "432.75",
+                                "closeTime": "Aug 30, 2025, 11:00:00 AM",
+                                "imgMedium": "https://picsum.photos/400/300?random=3",
+                                "actionTitle": "Bid Now",
+                                "currentBidTitle": "Current Bid"
+                            },
+                            {
+                                "id": 5551967,
+                                "title": "Luxury Watch Collection",
+                                "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551967",
+                                "currentBid": "1250.00",
+                                "closeTime": "Nov 05, 2025, 6:00:00 PM",
+                                "imgMedium": "https://picsum.photos/400/300?random=4",
+                                "actionTitle": "Bid Now",
+                                "currentBidTitle": "Current Bid"
+                            },
+                            {
+                                "id": 5551968,
+                                "title": "Rare Art Prints and Paintings",
+                                "url": "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551968",
+                                "currentBid": "675.25",
+                                "closeTime": "Dec 12, 2025, 2:30:00 PM",
+                                "imgMedium": "https://picsum.photos/400/300?random=5",
+                                "actionTitle": "Bid Now",
+                                "currentBidTitle": "Current Bid"
+                            }
+                        ]
+                    };
+
+                    // const data = await response.json();
+                    
+                    const data = mockData;
+
+                    if (data.jsStatus === 'success') {
+                        // Validate and filter items
+                        this.listings = (data.items || []).filter(item => {
+                            return item && 
+                                item.id && 
+                                item.title && 
+                                item.closeTime &&
+                                !isNaN(new Date(item.closeTime).getTime());
+                        });
+                    } else {
+                        throw new Error('API returned error status');
+                    }
+                } catch (error) {
+                    if (error.name === 'AbortError') {
+                        this.showError('Request timed out. Please try again.');
+                    } else {
+                    console.error('Error fetching listings:', error);
+                    this.showError('Failed to load auction listings. Please try again later.');
+                    }
+                }
+            }
+
+            renderListings() {
+                try {
+                if (this.listings.length === 0) {
+                        this.container.innerHTML = '<div class="cdi-error">No auction listings available at this time.</div>';
+                    return;
+                }
+
+                const listingsHTML = this.listings.map(listing => {
+                        try {
+                            return this.renderListingCard(listing);
+                        } catch (error) {
+                            console.error('Error rendering listing:', error);
+                            return this.renderErrorCard(listing);
+                        }
+                    }).join('');
+
+                    this.container.innerHTML = listingsHTML;
+                } catch (error) {
+                    console.error('Error rendering listings:', error);
+                    this.showError('Error displaying auction listings.');
+                }
+            }
+
+            renderListingCard(listing) {
+                    return `
+                    <div class="cdi-listing-card" data-id="${listing.id}">
+                        <div class="cdi-listing-image-container">
+                            <img src="${listing.imgMedium || listing.imgThumb}" 
+                                alt="${listing.title}" 
+                            class="cdi-listing-image"
+                            onerror="this.onerror=null;this.src='';">
+                            ${this.config.enableQuickView ? `<button class="cdi-quick-view-btn" data-id="${listing.id}">+</button>` : ''}
+                        </div>
+                        <div class="cdi-countdown-container">
+                            <div class="cdi-countdown-timer" id="countdown-${listing.id}">
+                                <div class="cdi-time-unit">
+                                    <span class="cdi-time-value days">--</span>&nbsp;
+                                    <span class="cdi-time-label">Days</span>
+                            </div>
+                                <div class="cdi-time-unit">
+                                    <span class="cdi-time-value hours">--</span>:<span class="cdi-time-value minutes">--</span>:<span class="cdi-time-value seconds">--</span>
+                                    </div>
+                                    </div>
+                                    </div>
+                        <div class="cdi-listing-content">
+                            <div class="cdi-listing-category">${listing.categoryName ? `<small>${listing.categoryName}</small>` : ''}</div>
+                            <a href="${listing.url}" target="$_blank"><h3 class="cdi-listing-title">${listing.title}</h3></a>                    
+                            <div class="cdi-current-bid">
+                                <span class="cdi-bid-label">${listing.currentBidTitle || 'Current Bid'}</span>:&nbsp;
+                                <span class="cdi-bid-amount">$${listing.currentBid}</span>&nbsp; 
+                                ${listing.bids ? `<span class="cdi-bids"><span class="cdi-bid-seperator">|</span> Bids: <strong>${listing.bids}</strong></span>` : ''}
+                            </div>
+                            ${this.config.showBidButton ? `
+                            <button class="cdi-bid-button" onclick="window.open('${listing.url}', '_blank')">
+                                ${listing.actionTitle || 'Bid Now'}
+                            </button>
+                            ` : ''}
+                        </div>
+                        </div>
+                    `;
+            }
+
+            renderErrorCard(listing) {
+                return `
+                    <div class="cdi-listing-card" data-id="${listing.id}">
+                        <div class="cdi-error">
+                            <p>Error rendering listing:</p>
+                            <pre>${JSON.stringify(listing, null, 2)}</pre>
+                        </div>
+                    </div>
+                `;
+            }
+
+            renderDots() {
+                const totalDots = Math.max(0, this.listings.length - this.itemsPerView + 1);
+                this.dotsContainer.innerHTML = '';
+                
+                for (let i = 0; i < totalDots; i++) {
+                    const dot = document.createElement('div');
+                    dot.className = `cdi-dot ${i === this.currentSlide ? 'active' : ''}`;
+                    dot.addEventListener('click', () => {
+                        this.goToSlide(i);
+                        this.pauseAutoScroll();
+                        // Resume after 3 seconds of inactivity
+                        setTimeout(() => this.resumeAutoScroll(), 3000);
+                    });
+                    this.dotsContainer.appendChild(dot);
+                }
+            }
+
+            setupEventListeners() {
+                if (this.prevBtn) {
+                    this.prevBtn.addEventListener('click', () => {
+                        this.prevSlide();
+                        this.pauseAutoScroll();
+                        // Resume after 3 seconds of inactivity
+                        setTimeout(() => this.resumeAutoScroll(), 3000);
+                    });
+                }
+                
+                if (this.nextBtn) {
+                    this.nextBtn.addEventListener('click', () => {
+                        this.nextSlide();
+                        this.pauseAutoScroll();
+                        // Resume after 3 seconds of inactivity
+                        setTimeout(() => this.resumeAutoScroll(), 3000);
+                    });
+                }
+                
+                // Touch/swipe support
+                let startX = 0;
+                let startY = 0;
+                let isDragging = false;
+
+                if (this.container) {
+                    this.touchStartHandler = (e) => {
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                        isDragging = true;
+                        this.pauseAutoScroll();
+                    };
+
+                    this.touchEndHandler = (e) => {
+                        if (!isDragging) return;
+                        isDragging = false;
+                        
+                        const endX = e.changedTouches[0].clientX;
+                        const endY = e.changedTouches[0].clientY;
+                        const diffX = startX - endX;
+                        const diffY = startY - endY;
+                        
+                        // Only trigger if horizontal swipe is more than vertical
+                        if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 50) {
+                            if (diffX > 0) {
+                                this.nextSlide();
+                            } else {
+                                this.prevSlide();
+                            }
+                        }
+                        
+                        // Resume after 3 seconds of inactivity
+                        setTimeout(() => this.resumeAutoScroll(), 3000);
+                    };
+
+                    this.container.addEventListener('touchstart', this.touchStartHandler, { passive: true });
+                    this.container.addEventListener('touchend', this.touchEndHandler, { passive: true });
+                    
+                    // Mouse hover events
+                    this.mouseEnterHandler = () => {
+                        this.pauseAutoScroll();
+                    };
+                    
+                    this.mouseLeaveHandler = () => {
+                        // Resume after 1 second when mouse leaves
+                        setTimeout(() => this.resumeAutoScroll(), 1000);
+                    };
+                    
+                    this.container.addEventListener('mouseenter', this.mouseEnterHandler);
+                    this.container.addEventListener('mouseleave', this.mouseLeaveHandler);
+                }
+
+                // Auto-scroll toggle
+                if (this.autoScrollIndicator) {
+                    this.autoScrollIndicator.addEventListener('click', () => this.toggleAutoScroll());
+                }
+
+                // Window resize
+                window.addEventListener('resize', () => {
+                    this.itemsPerView = this.calculateItemsPerView();
+                    this.renderDots();
+                    this.updateSliderPosition();
+                    this.updateNavigation();
+                });
+
+                if (this.config.enableQuickView) {
+                    this.container.addEventListener('click', (e) => {
+                        if (e.target.classList.contains('cdi-quick-view-btn')) {
+                            const id = e.target.getAttribute('data-id');
+                            const listing = this.listings.find(l => l.id == id);
+                            this.openQuickViewModal(listing);
+                        }
+                    });
+                }
+            }
+
+            setupAutoScroll() {
+                this.autoScrollInterval = setInterval(() => {
+                    if (this.isAutoScrolling) {
+                        this.nextSlide();
+                    }
+                }, this.config.autoScrollInterval);
+                
+                this.updateAutoScrollIndicator();
+            }
+
+            toggleAutoScroll() {
+                this.isAutoScrolling = !this.isAutoScrolling;
+                this.updateAutoScrollIndicator();
+                this.resetAutoScrollInterval();
+            }
+
+            pauseAutoScroll() {
+                this.isAutoScrolling = false;
+                this.updateAutoScrollIndicator();
+            }
+
+            resumeAutoScroll() {
+                if (this.config.autoScroll) {
+                    this.isAutoScrolling = true;
+                    this.updateAutoScrollIndicator();
+                    this.resetAutoScrollInterval();
+                }
+            }
+
+            updateAutoScrollIndicator() {
+                if (!this.autoScrollIndicator) return;
+                
+                const text = document.getElementById('autoScrollText');
+                
+                if (this.isAutoScrolling) {
+                    this.autoScrollIndicator.classList.remove('paused');
+                    this.autoScrollIndicator.classList.add('active');
+                    if (text) text.textContent = 'Auto-scroll';
+                } else {
+                    this.autoScrollIndicator.classList.add('paused');
+                    this.autoScrollIndicator.classList.remove('active');
+                    if (text) text.textContent = 'Paused';
+                }
+            }
+
+            goToSlide(index) {
+                const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+                this.currentSlide = Math.max(0, Math.min(index, maxSlide));
+                this.updateSliderPosition();
+                this.updateNavigation();
+                this.updateDots();
+            }
+
+            nextSlide() {
+                const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+                if (this.currentSlide >= maxSlide) {
+                    this.currentSlide = 0;
+                } else {
+                    this.currentSlide++;
+                }
+                this.updateSliderPosition();
+                this.updateNavigation();
+                this.updateDots();
+            }
+
+            prevSlide() {
+                const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+                if (this.currentSlide <= 0) {
+                    this.currentSlide = maxSlide;
+                } else {
+                    this.currentSlide--;
+                }
+                this.updateSliderPosition();
+                this.updateNavigation();
+                this.updateDots();
+            }
+
+            updateSliderPosition() {
+                if (!this.container) return;
+                
+                // Get the actual width of a card plus gap
+                const firstCard = this.container.querySelector('.cdi-listing-card');
+                if (!firstCard) return;
+                
+                const cardWidth = firstCard.offsetWidth + 30; // 20px is the gap
+                const translateX = -this.currentSlide * cardWidth;
+                this.container.style.transform = `translateX(${translateX}px)`;
+            }
+
+            updateNavigation() {
+                const maxSlide = Math.max(0, this.listings.length - this.itemsPerView);
+                if (this.prevBtn) this.prevBtn.disabled = this.listings.length <= this.itemsPerView;
+                if (this.nextBtn) this.nextBtn.disabled = this.listings.length <= this.itemsPerView;
+            }
+
+            updateDots() {
+                if (!this.dotsContainer) return;
+                const dots = this.dotsContainer.querySelectorAll('.cdi-dot');
+                dots.forEach((dot, index) => {
+                    dot.classList.toggle('active', index === this.currentSlide);
+                });
+            }
+
+            startCountdowns() {
+                this.countdownIntervals.forEach(interval => clearInterval(interval));
+                this.countdownIntervals = [];
+
+                this.listings.forEach(listing => {
+                    const countdownElement = document.getElementById(`countdown-${listing.id}`);
+                    if (!countdownElement) return;
+
+                    const updateCountdown = () => {
+                        const now = new Date().getTime();
+                        const closeTime = new Date(listing.closeTime).getTime();
+                        
+                        // Check if date is valid
+                        if (isNaN(closeTime)) {
+                            countdownElement.innerHTML = '<div style="color: #ff6b6b; text-align: center;">Invalid end date</div>';
+                            return;
+                        }
+                        
+                        const timeLeft = closeTime - now;
+
+                        if (timeLeft <= 0) {
+                            countdownElement.innerHTML = '<div style="color: #ff6b6b; font-weight: bold; text-align: center;">Auction Ended</div>';
+                            return;
+                        }
+
+                        const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
+                        const hours = Math.floor((timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                        const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
+                        const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
+
+                        const daysEl = countdownElement.querySelector('.cdi-time-value.days');
+                        const hoursEl = countdownElement.querySelector('.cdi-time-value.hours');
+                        const minutesEl = countdownElement.querySelector('.cdi-time-value.minutes');
+                        const secondsEl = countdownElement.querySelector('.cdi-time-value.seconds');
+
+                        if (daysEl) daysEl.textContent = days.toString().padStart(2, '0');
+                        if (hoursEl) hoursEl.textContent = hours.toString().padStart(2, '0');
+                        if (minutesEl) minutesEl.textContent = minutes.toString().padStart(2, '0');
+                        if (secondsEl) secondsEl.textContent = seconds.toString().padStart(2, '0');
+                    };
+
+                    updateCountdown();
+                    const interval = setInterval(updateCountdown, 1000);
+                    this.countdownIntervals.push(interval);
+                });
+            }
+
+            showError(message) {
+                if (this.container) {
+                    this.container.innerHTML = `<div class="cdi-error">${message}</div>`;
+                }
+            }
+
+            destroy() {
+                // Clear all intervals
+                if (this.countdownIntervals) {
+                    this.countdownIntervals.forEach(interval => {
+                        if (interval) clearInterval(interval);
+                    });
+                    this.countdownIntervals = [];
+                }
+                
+                if (this.refreshInterval) {
+                    clearInterval(this.refreshInterval);
+                    this.refreshInterval = null;
+                }
+                
+                if (this.autoScrollInterval) {
+                    clearInterval(this.autoScrollInterval);
+                    this.autoScrollInterval = null;
+                }
+                
+                // Remove event listeners
+                if (this.container) {
+                    this.container.removeEventListener('touchstart', this.touchStartHandler);
+                    this.container.removeEventListener('touchend', this.touchEndHandler);
+                    this.container.removeEventListener('mouseenter', this.mouseEnterHandler);
+                    this.container.removeEventListener('mouseleave', this.mouseLeaveHandler);
+                }
+                
+                // Clear DOM references
+                this.container = null;
+                this.prevBtn = null;
+                this.nextBtn = null;
+                this.dotsContainer = null;
+                this.autoScrollIndicator = null;
+            }
+
+            getAvailableContainers() {
+                const containers = document.querySelectorAll('[id]');
+                const containerIds = Array.from(containers).map(el => el.id).join(', ');
+                return containerIds || 'None found';
+            }
+
+            setupUserActivityTracking() {
+                let userActivityTimeout;
+
+                const resetActivityTimer = () => {
+                    clearTimeout(userActivityTimeout);
+                    this.pauseAutoScroll();
+
+                    userActivityTimeout = setTimeout(() => {
+                        this.resumeAutoScroll();
+                    }, 3000); // Resume after 3 seconds of no activity
+                };
+
+                // Only track events inside the widget container
+                const widgetContainer = document.querySelector('.cdi-auction-widget-container');
+                if (widgetContainer) {
+                    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+                    events.forEach(event => {
+                        widgetContainer.addEventListener(event, resetActivityTimer, { passive: true });
+                    });
+                    // Also track clicks inside the widget
+                    widgetContainer.addEventListener('click', resetActivityTimer, { passive: true });
+                }
+            }
+
+            resetAutoScrollInterval() {
+                if (this.autoScrollInterval) {
+                    clearInterval(this.autoScrollInterval);
+                }
+                if (this.isAutoScrolling) {
+                    this.autoScrollInterval = setInterval(() => {
+                        if (this.isAutoScrolling) {
+                            this.nextSlide();
+                        }
+                    }, this.config.autoScrollInterval);
+                }
+            }
+
+            openQuickViewModal(listing) {
+                const widgetContainer = document.querySelector(`#${this.config.containerId} .cdi-auction-widget-container`);
+                const modal = widgetContainer ? widgetContainer.querySelector('#cdiQuickViewModal') : null;
+                if (!modal || !listing) return;
+
+                // Gather all available images
+                const imageKeys = ['imgMedium', 'imgMedium2', 'imgMedium3'];
+                const images = imageKeys.map(key => listing[key]).filter(Boolean);
+                let currentIndex = 0;
+
+                // Carousel HTML
+                const renderImage = (idx) => `
+                    <div style="position:relative;">
+                        <img src="${images[idx]}" alt="${listing.title}" style="width:100%;border-radius:10px;max-height:400px;object-fit:contain;">
+                        ${images.length > 1 ? `
+                            <button class="cdi-carousel-btn cdi-carousel-prev" style="position:absolute;top:50%;left:10px;transform:translateY(-50%);background:rgba(255, 255, 255, 0.8);border:none;border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.08);">&#8249;</button>
+                            <button class="cdi-carousel-btn cdi-carousel-next" style="position:absolute;top:50%;right:10px;transform:translateY(-50%);background:rgba(255, 255, 255, 0.8);border:none;border-radius:50%;width:36px;height:36px;font-size:1rem;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.08);">&#8250;</button>
+                            <div style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.4);color:#fff;padding:2px 10px;border-radius:8px;font-size:0.9rem;">
+                                ${idx+1} / ${images.length}
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+
+                // Modal content
+                modal.innerHTML = `
+                    <div class="cdi-quick-view-modal-content">
+                        <span class="cdi-quick-view-close">&times;</span>
+                        <div id="cdiQuickViewCarousel">${renderImage(currentIndex)}</div>
+                        <h2>${listing.title}</h2>
+                        <div class="cdi-listing-content">
+                            <h3>Current Bid: $${listing.currentBid}</h3>
+                            ${listing.bids ? `<span class="cdi-bids">Bids: <strong>${listing.bids}</strong></span>` : ''}
+                            <p ><strong>Ends:</strong> ${listing.closeTime}</p>
+                        </div>
+                        ${listing.desc ? `<p>${listing.desc}</p>` : ''}
+                        <button class="cdi-bid-button" onclick="window.open('${listing.url}', '_blank')">Bid Now</button>
+                    </div>
+                `;
+                modal.style.display = 'flex';
+
+                // Carousel logic
+                if (images.length > 1) {
+                    const updateCarousel = (newIdx) => {
+                        currentIndex = (newIdx + images.length) % images.length;
+                        document.getElementById('cdiQuickViewCarousel').innerHTML = renderImage(currentIndex);
+                        attachCarouselEvents();
+                    };
+                    function attachCarouselEvents() {
+                        const prevBtn = modal.querySelector('.cdi-carousel-prev');
+                        const nextBtn = modal.querySelector('.cdi-carousel-next');
+                        if (prevBtn) prevBtn.onclick = (e) => { e.stopPropagation(); updateCarousel(currentIndex - 1); };
+                        if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); updateCarousel(currentIndex + 1); };
+                    }
+                    attachCarouselEvents();
+                }
+
+                // Close logic
+                modal.querySelector('.cdi-quick-view-close').onclick = () => modal.style.display = 'none';
+                modal.onclick = (e) => { if (e.target === modal) modal.style.display = 'none'; };
+            }
+        }
+
+        // Global function to initialize the widget
+        window.initAuctionWidget = function(config) {
+            return new AuctionSliderWidget(config);
+        };
+
+        // Auto-initialize if container exists
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() {
+                const containerId = window.myContainerId || 'cd-ondemand-container';
+                console.log('Looking for container with ID:', containerId);
+                
+                if (document.getElementById(containerId)) {
+                    console.log('Container found, initializing widget...');
+                    window.auctionWidget = new AuctionSliderWidget();
+                } else {
+                    console.error('Container not found:', containerId);
+                    // Show error message
+                    const errorDiv = document.createElement('div');
+                    errorDiv.style.cssText = `
+                        background: #ffebee;
+                        color: #c62828;
+                        padding: 20px;
+                        margin: 20px;
+                        border: 2px solid #ef5350;
+                        border-radius: 8px;
+                        font-family: Arial, sans-serif;
+                        font-size: 16px;
+                        text-align: center;
+                    `;
+                    errorDiv.innerHTML = `
+                        <h3>Widget Initialization Error</h3>
+                        <p>Container with ID '${containerId}' not found.</p>
+                    `;
+                    document.body.insertBefore(errorDiv, document.body.firstChild);
+                }
+            });
+        } else {
+            const containerId = window.myContainerId || 'cd-ondemand-container';
+            console.log('Looking for container with ID:', containerId);
+            
+            if (document.getElementById(containerId)) {
+                console.log('Container found, initializing widget...');
+                window.auctionWidget = new AuctionSliderWidget();
+            } else {
+                console.error('Container not found:', containerId);
+                // Show error message
+                const errorDiv = document.createElement('div');
+                errorDiv.style.cssText = `
+                    background: #ffebee;
+                    color: #c62828;
+                    padding: 20px;
+                    margin: 20px;
+                    border: 2px solid #ef5350;
+                    border-radius: 8px;
+                    font-family: Arial, sans-serif;
+                    font-size: 16px;
+                    text-align: center;
+                `;
+                errorDiv.innerHTML = `
+                    <h3>Widget Initialization Error</h3>
+                    <p>Container with ID '${containerId}' not found.</p>
+                `;
+                document.body.insertBefore(errorDiv, document.body.firstChild);
+            }
+        }
+
+        // ADD THIS LINE:
+        window.AuctionSliderWidget = AuctionSliderWidget;
+    })();
+</script>
+    
+<body>
+    <div id="cd-ondemand-container"></div>
+    <div id="widget-configurator">
+        <h3>Widget Configuration</h3>
+        <div class="config-grid">
+            <div>
+                <label>Widget Title
+                    <input type="text" id="widgetTitleInput" value="Live Auctions">
+                </label>
+            </div>
+            <div>
+                <label>Widget Subtitle
+                    <input type="text" id="widgetSubtitleInput" value="Swipe through exclusive items that are ending soon">
+                </label>
+            </div>
+            <div>
+                <label>API URL
+                    <input type="text" id="apiUrlInput" value="https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api">
+                </label>
+            </div>
+            <div>
+                <label>Container ID
+                    <input type="text" id="containerIdInput" value="cd-ondemand-container">
+                    <small style="color: #666; font-size: 0.8rem; display: block; margin-top: 4px;">
+                        This ID must match an existing HTML element on your page. 
+                        Current page containers: <span id="availableContainers"></span>
+                    </small>
+                </label>
+            </div>
+            <div>
+                <label>Auto-scroll Interval (ms)
+                    <input type="number" id="autoScrollIntervalInput" value="4000">
+                </label>
+            </div>
+            <div>
+                <label>Refresh Interval (ms)
+                    <input type="number" id="refreshIntervalInput" value="30000">
+                </label>
+            </div>
+            <div>
+                <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="quickViewToggle" checked>
+                    Enable Quick View
+                </label>
+            </div>
+            <div>
+                <label style="display:flex;align-items:center;gap:8px;">
+                    <input type="checkbox" id="showBidButtonToggle" checked>
+                    Show Bid Button
+                </label>
+            </div>
+            <div>
+                <label>Border Radius (px)
+                    <input type="number" id="borderRadiusInput" value="15" min="0" max="50" style="width:60px;">
+                </label>
+            </div>
+           
+        </div>
+        <h4 style="margin-bottom: 10px; color: #274b76;">Colors</h4>
+        <div class="color-grid">
+            
+            <label>Time Left BG
+                <input type="color" id="counterBgColorInput" value="#b3f3ff">
+            </label>
+            <label>Time Left Font
+                <input type="color" id="counterFontColorInput" value="#000000">
+            </label>
+            <label>Misc
+                <input type="color" id="dotColorInput" value="#274b76">
+            </label>
+            <label>Button BG
+                <input type="color" id="buttonBgColorInput" value="#274b76">
+            </label>
+            <label>Button Font
+                <input type="color" id="buttonFontColorInput" value="#ffffff">
+            </label>
+            
+        </div>
+        <button id="downloadScriptBtn">Download Script</button>
+        <button id="generateCodeBtn" style="margin-left: 10px;">Generate Code</button>
+        <pre id="generatedCode" style="background:#f8fafc; border-radius:8px; padding:16px; margin-top:16px; font-size:1rem; color:#274b76; display:none;"></pre>
+    </div>
+   <script>
+    function updateGlobalsAndWidget() {
+        // Colors
+        window.myDotColor = document.getElementById('dotColorInput').value;
+        window.myCounterBgColor = document.getElementById('counterBgColorInput').value;
+        window.myCounterFontColor = document.getElementById('counterFontColorInput').value;
+        window.myButtonBgColor = document.getElementById('buttonBgColorInput').value;
+        window.myButtonFontColor = document.getElementById('buttonFontColorInput').value;
+        window.myBorderRadius = document.getElementById('borderRadiusInput').value + 'px';
+        
+        // Widget configuration
+        window.myWidgetTitle = document.getElementById('widgetTitleInput').value;
+        window.myWidgetSubtitle = document.getElementById('widgetSubtitleInput').value;
+        window.myApiUrl = document.getElementById('apiUrlInput').value;
+        window.myAutoScrollInterval = parseInt(document.getElementById('autoScrollIntervalInput').value);
+        window.myRefreshInterval = parseInt(document.getElementById('refreshIntervalInput').value);
+        window.myContainerId = document.getElementById('containerIdInput').value;
+        window.myEnableQuickView = document.getElementById('quickViewToggle').checked;
+        window.myShowBidButton = document.getElementById('showBidButtonToggle').checked;
+        
+        if (window.auctionWidget && window.auctionWidget.destroy) window.auctionWidget.destroy();
+        window.auctionWidget = new AuctionSliderWidget();
+    }
+
+    // Listen for changes on all inputs
+    ['dotColorInput', 'counterBgColorInput', 'counterFontColorInput', 
+     'buttonBgColorInput', 'buttonFontColorInput', 'borderRadiusInput',
+     'widgetTitleInput', 'widgetSubtitleInput', 'apiUrlInput', 
+     'autoScrollIntervalInput', 'refreshIntervalInput', 'containerIdInput', 'quickViewToggle', 'showBidButtonToggle'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', updateGlobalsAndWidget);
+    });
+
+    document.getElementById('downloadScriptBtn').addEventListener('click', async function() {
+        // Get all current values
+        const dotColor = document.getElementById('dotColorInput').value;
+        const counterBgColor = document.getElementById('counterBgColorInput').value;
+        const counterFontColor = document.getElementById('counterFontColorInput').value;
+        const buttonBgColor = document.getElementById('buttonBgColorInput').value;
+        const buttonFontColor = document.getElementById('buttonFontColorInput').value;
+        const borderRadius = document.getElementById('borderRadiusInput').value + 'px';
+        const widgetTitle = document.getElementById('widgetTitleInput').value;
+        const widgetSubtitle = document.getElementById('widgetSubtitleInput').value;
+        const apiUrl = document.getElementById('apiUrlInput').value;
+        const autoScrollInterval = document.getElementById('autoScrollIntervalInput').value;
+        const refreshInterval = document.getElementById('refreshIntervalInput').value;
+        const containerId = document.getElementById('containerIdInput').value;
+
+        // Get the widget script code
+        const widgetScript = document.getElementById('widget-main-script').textContent;
+
+        // Prepend all the variables including the container ID
+        const scriptContent = `
+            window.myDotColor = "${dotColor}";
+            window.myCounterBgColor = "${counterBgColor}";
+            window.myCounterFontColor = "${counterFontColor}";
+            window.myButtonBgColor = "${buttonBgColor}";
+            window.myButtonFontColor = "${buttonFontColor}";
+            window.myBorderRadius = "${borderRadius}";
+            window.myWidgetTitle = "${widgetTitle}";
+            window.myWidgetSubtitle = "${widgetSubtitle}";
+            window.myApiUrl = "${apiUrl}";
+            window.myAutoScrollInterval = ${autoScrollInterval};
+            window.myRefreshInterval = ${refreshInterval};
+            window.myContainerId = "${containerId}";
+            window.myEnableQuickView = ${document.getElementById('quickViewToggle').checked};
+            window.myShowBidButton = ${document.getElementById('showBidButtonToggle').checked};
+            ${widgetScript}
+        `;
+
+        // Minify using Terser
+        const minified = await Terser.minify(scriptContent);
+
+        if (minified.error) {
+            alert('Minification failed: ' + minified.error);
+            return;
+        }
+
+        const blob = new Blob([minified.code], {type: 'text/javascript'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'cd-on-demand.min.js';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('generateCodeBtn').addEventListener('click', function() {
+        // Get the current container ID
+        const containerId = document.getElementById('containerIdInput').value.trim() || 'cd-ondemand-container';
+        // You can change the src below to your actual production JS file location
+        const scriptSrc = 'cd-on-demand.js';
+
+        // Generate the code snippet
+        const openTag = '<' + 'script src="';
+        const closeTag = '"' + '>' + '<' + '/script' + '>';
+        const code = `<div id="${containerId}"></div>\n${openTag}${scriptSrc}${closeTag}`;
+
+        // Show the code in the pre block
+        const pre = document.getElementById('generatedCode');
+        pre.textContent = code;
+        pre.style.display = 'block';
+    });
+
+    // Initialize widget on page load
+    updateGlobalsAndWidget();
+  </script>
+</body>
+</html>

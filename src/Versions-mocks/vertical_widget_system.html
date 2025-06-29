@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auction Widget System</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #f5f7fa;
+        }
+
+        .demo-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .demo-section {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .section-title {
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            color: #333;
+            border-bottom: 2px solid #e9ecef;
+            padding-bottom: 10px;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 14px;
+            overflow-x: auto;
+            margin: 15px 0;
+        }
+
+        /* Widget Styles */
+        .auction-widget {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            overflow: hidden;
+            max-width: 100%;
+        }
+
+        .widget-header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .widget-title {
+            margin: 0;
+            font-size: 1.3em;
+            font-weight: 600;
+        }
+
+        .widget-subtitle {
+            margin: 5px 0 0 0;
+            opacity: 0.9;
+            font-size: 0.9em;
+        }
+
+        .auctions-container {
+            padding: 0;
+        }
+
+        .auction-item {
+            display: flex;
+            padding: 20px;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background 0.2s ease;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .auction-item:hover {
+            background: #f8f9fa;
+        }
+
+        .auction-item:last-child {
+            border-bottom: none;
+        }
+
+        .auction-image {
+            width: 100px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        .auction-content {
+            flex: 1;
+        }
+
+        .auction-title {
+            font-weight: 600;
+            color: #333;
+            margin: 0 0 8px 0;
+            font-size: 1em;
+            line-height: 1.3;
+        }
+
+        .auction-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .current-bid {
+            color: #e74c3c;
+            font-weight: 700;
+            font-size: 1.1em;
+        }
+
+        .bid-label {
+            color: #666;
+            font-size: 0.85em;
+            margin-bottom: 2px;
+        }
+
+        .time-remaining {
+            text-align: right;
+        }
+
+        .time-value {
+            color: #2c5aa0;
+            font-weight: 600;
+            font-size: 0.9em;
+        }
+
+        .time-label {
+            color: #888;
+            font-size: 0.8em;
+        }
+
+        .auction-actions {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+        }
+
+        .bid-button {
+            background: #e74c3c;
+            color: white;
+            text-decoration: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            font-size: 0.9em;
+            transition: background 0.2s ease;
+        }
+
+        .bid-button:hover {
+            background: #c0392b;
+        }
+
+        .close-time {
+            color: #666;
+            font-size: 0.8em;
+        }
+
+        .widget-footer {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            text-align: center;
+            border-top: 1px solid #e9ecef;
+        }
+
+        .view-all-btn {
+            background: #2c5aa0;
+            color: white;
+            text-decoration: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 500;
+            display: inline-block;
+            transition: background 0.2s ease;
+        }
+
+        .view-all-btn:hover {
+            background: #1e3f73;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .error {
+            text-align: center;
+            padding: 40px;
+            color: #dc3545;
+            background: #f8d7da;
+            margin: 20px;
+            border-radius: 8px;
+        }
+
+        .countdown {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .auction-item {
+                flex-direction: column;
+            }
+            
+            .auction-image {
+                width: 100%;
+                height: 120px;
+                margin-right: 0;
+                margin-bottom: 10px;
+            }
+
+            .auction-meta {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 8px;
+            }
+
+            .auction-actions {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+
+            .bid-button {
+                text-align: center;
+            }
+        }
+
+        .demo-widget {
+            margin: 20px 0;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+    <div class="demo-container">
+        <h1>Auction Widget System</h1>
+        
+        <!-- Widget JavaScript -->
+        <div class="demo-section">
+            <h2 class="section-title">Widget JavaScript (auction-widget.js)</h2>
+            <p>This script fetches and displays your auction data:</p>
+            <div class="code-block">class AuctionWidget {
+    constructor(options = {}) {
+        this.apiUrl = options.apiUrl || 'https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api';
+        this.containerId = options.containerId || 'auction-widget';
+        this.limit = options.limit || 5;
+        this.title = options.title || 'Live Auctions';
+        this.subtitle = options.subtitle || 'Ending soon - place your bids!';
+        this.siteUrl = options.siteUrl || 'https://shop-cdidemostg1.oc1.servicecdi.com';
+        this.showFooter = options.showFooter !== false;
+        this.updateInterval = options.updateInterval || 60000; // 1 minute
+        
+        this.init();
+    }
+
+    async init() {
+        const container = document.getElementById(this.containerId);
+        if (!container) {
+            console.error(`Container with ID '${this.containerId}' not found`);
+            return;
+        }
+
+        this.showLoading(container);
+        
+        try {
+            const data = await this.fetchAuctions();
+            this.render(container, data);
+            
+            // Set up auto-refresh for live updates
+            if (this.updateInterval > 0) {
+                setInterval(() => this.refresh(), this.updateInterval);
+            }
+        } catch (error) {
+            this.showError(container, error.message);
+        }
+    }
+
+    async fetchAuctions() {
+        const response = await fetch(this.apiUrl);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.jsStatus !== 'success') {
+            throw new Error('API returned error status');
+        }
+        
+        return data;
+    }
+
+    async refresh() {
+        try {
+            const data = await this.fetchAuctions();
+            const container = document.getElementById(this.containerId);
+            if (container) {
+                this.render(container, data);
+            }
+        } catch (error) {
+            console.error('Failed to refresh auction data:', error);
+        }
+    }
+
+    showLoading(container) {
+        container.innerHTML = `
+            &lt;div class="auction-widget"&gt;
+                &lt;div class="loading"&gt;Loading auctions...&lt;/div&gt;
+            &lt;/div&gt;
+        `;
+    }
+
+    showError(container, message) {
+        container.innerHTML = `
+            &lt;div class="auction-widget"&gt;
+                &lt;div class="error"&gt;Error: ${message}&lt;/div&gt;
+            &lt;/div&gt;
+        `;
+    }
+
+    formatTimeRemaining(item) {
+        const days = item.daysLeft || 0;
+        const hours = item.hoursLeft || 0;
+        const minutes = item.minutesLeft || 0;
+        
+        if (days > 0) {
+            return `${days}d ${hours}h`;
+        } else if (hours > 0) {
+            return `${hours}h ${minutes}m`;
+        } else {
+            return `${minutes}m`;
+        }
+    }
+
+    formatCloseTime(closeTime) {
+        try {
+            const date = new Date(closeTime);
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+        } catch (e) {
+            return closeTime;
+        }
+    }
+
+    render(container, data) {
+        const items = data.items || [];
+        const limitedItems = items.slice(0, this.limit);
+        
+        if (limitedItems.length === 0) {
+            container.innerHTML = `
+                &lt;div class="auction-widget"&gt;
+                    &lt;div class="loading"&gt;No auctions available&lt;/div&gt;
+                &lt;/div&gt;
+            `;
+            return;
+        }
+
+        const auctionsHtml = limitedItems.map(item =&gt; `
+            &lt;a href="${item.url}" class="auction-item" target="_blank"&gt;
+                &lt;img src="${item.imgThumb || item.imgMedium}" 
+                     alt="${this.escapeHtml(item.title)}" 
+                     class="auction-image"
+                     onerror="this.src='https://via.placeholder.com/100x80?text=No+Image'"&gt;
+                &lt;div class="auction-content"&gt;
+                    &lt;h3 class="auction-title"&gt;${this.escapeHtml(item.title)}&lt;/h3&gt;
+                    &lt;div class="auction-meta"&gt;
+                        &lt;div&gt;
+                            &lt;div class="bid-label"&gt;${item.currentBidTitle || 'Current Bid'}&lt;/div&gt;
+                            &lt;div class="current-bid"&gt;$${item.currentBid}&lt;/div&gt;
+                        &lt;/div&gt;
+                        &lt;div class="time-remaining"&gt;
+                            &lt;div class="countdown"&gt;${this.formatTimeRemaining(item)}&lt;/div&gt;
+                            &lt;div class="time-label"&gt;remaining&lt;/div&gt;
+                        &lt;/div&gt;
+                    &lt;/div&gt;
+                    &lt;div class="auction-actions"&gt;
+                        &lt;span class="bid-button"&gt;${item.actionTitle || 'Bid Now'}&lt;/span&gt;
+                        &lt;span class="close-time"&gt;Ends: ${this.formatCloseTime(item.closeTime)}&lt;/span&gt;
+                    &lt;/div&gt;
+                &lt;/div&gt;
+            &lt;/a&gt;
+        `).join('');
+
+        const footerHtml = this.showFooter ? `
+            &lt;div class="widget-footer"&gt;
+                &lt;a href="${this.siteUrl}" class="view-all-btn" target="_blank"&gt;View All Auctions&lt;/a&gt;
+            &lt;/div&gt;
+        ` : '';
+
+        container.innerHTML = `
+            &lt;div class="auction-widget"&gt;
+                &lt;div class="widget-header"&gt;
+                    &lt;h2 class="widget-title"&gt;${this.escapeHtml(this.title)}&lt;/h2&gt;
+                    &lt;p class="widget-subtitle"&gt;${this.escapeHtml(this.subtitle)}&lt;/p&gt;
+                &lt;/div&gt;
+                &lt;div class="auctions-container"&gt;
+                    ${auctionsHtml}
+                &lt;/div&gt;
+                ${footerHtml}
+            &lt;/div&gt;
+        `;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text || '';
+        return div.innerHTML;
+    }
+}
+
+// Auto-initialize if data attributes are present
+document.addEventListener('DOMContentLoaded', function() {
+    const containers = document.querySelectorAll('[data-auction-widget]');
+    containers.forEach(container =&gt; {
+        const options = {
+            containerId: container.id,
+            apiUrl: container.dataset.apiUrl,
+            limit: parseInt(container.dataset.limit) || 5,
+            title: container.dataset.title,
+            subtitle: container.dataset.subtitle,
+            siteUrl: container.dataset.siteUrl,
+            showFooter: container.dataset.showFooter !== 'false',
+            updateInterval: parseInt(container.dataset.updateInterval) || 60000
+        };
+        
+        new AuctionWidget(options);
+    });
+});</div>
+        </div>
+
+        <!-- Embed Code -->
+        <div class="demo-section">
+            <h2 class="section-title">Embed Code for Third-party Sites</h2>
+            
+            <h4>Simple Embed (Data Attributes):</h4>
+            <div class="code-block">&lt;!-- Add this where you want the widget --&gt;
+&lt;div id="auction-widget" 
+     data-auction-widget
+     data-api-url="https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api"
+     data-limit="5"
+     data-title="Live Auctions"
+     data-subtitle="Ending soon - place your bids!"
+     data-site-url="https://shop-cdidemostg1.oc1.servicecdi.com"
+     data-update-interval="60000"&gt;
+&lt;/div&gt;
+
+&lt;!-- Add these scripts before closing &lt;/body&gt; tag --&gt;
+&lt;link rel="stylesheet" href="https://yoursite.com/widget/auction-widget.css"&gt;
+&lt;script src="https://yoursite.com/widget/auction-widget.js"&gt;&lt;/script&gt;</div>
+
+            <h4>JavaScript Initialization:</h4>
+            <div class="code-block">&lt;div id="custom-auction-widget"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+new AuctionWidget({
+    containerId: 'custom-auction-widget',
+    apiUrl: 'https://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/allAuction.action?viewType=api',
+    limit: 8,
+    title: 'Featured Auctions',
+    subtitle: 'Don\'t miss out!',
+    siteUrl: 'https://shop-cdidemostg1.oc1.servicecdi.com',
+    showFooter: true,
+    updateInterval: 30000 // Update every 30 seconds
+});
+&lt;/script&gt;</div>
+
+            <h4>One-liner for Quick Testing:</h4>
+            <div class="code-block">&lt;div id="test-widget"&gt;&lt;/div&gt;
+&lt;script src="https://yoursite.com/widget/auction-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;new AuctionWidget({containerId: 'test-widget'});&lt;/script&gt;</div>
+        </div>
+
+        <!-- Demo Widget -->
+        <div class="demo-section">
+            <h2 class="section-title">Live Demo</h2>
+            <p>Here's how the auction widget looks with your data:</p>
+            <div class="demo-widget">
+                <div id="demo-widget"></div>
+            </div>
+        </div>
+
+        <!-- Features -->
+        <div class="demo-section">
+            <h2 class="section-title">Widget Features</h2>
+            <ul>
+                <li><strong>Live Updates:</strong> Auto-refreshes every minute to show current bids and time remaining</li>
+                <li><strong>Responsive Design:</strong> Works perfectly on desktop, tablet, and mobile</li>
+                <li><strong>Time Countdown:</strong> Shows days, hours, and minutes remaining</li>
+                <li><strong>Direct Bidding:</strong> Links directly to your auction pages</li>
+                <li><strong>Current Bid Display:</strong> Prominently shows the current highest bid</li>
+                <li><strong>Image Fallback:</strong> Handles missing images gracefully</li>
+                <li><strong>Error Handling:</strong> Graceful fallbacks if API is unavailable</li>
+                <li><strong>Easy Customization:</strong> Customize title, limit, colors, and update frequency</li>
+            </ul>
+        </div>
+
+        <!-- Installation -->
+        <div class="demo-section">
+            <h2 class="section-title">Installation Steps</h2>
+            <ol>
+                <li><strong>Save the widget files:</strong> Create auction-widget.js and auction-widget.css</li>
+                <li><strong>Upload to your server:</strong> Place in a /widget/ directory</li>
+                <li><strong>Test CORS:</strong> Ensure your API allows cross-origin requests</li>
+                <li><strong>Test the widget:</strong> Verify it works on your own site first</li>
+                <li><strong>Distribute embed code:</strong> Share with partners and affiliates</li>
+            </ol>
+            
+            <h3>CORS Configuration:</h3>
+            <p>Make sure your server allows cross-origin requests by adding these headers:</p>
+            <div class="code-block">Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET
+Access-Control-Allow-Headers: Content-Type</div>
+        </div>
+    </div>
+
+    <script>
+        // Demo data matching your API format
+        const demoData = {
+            jsStatus: "success",
+            jsMsgCodeList: {},
+            items: [
+                {
+                    id: 5551964,
+                    title: "Vintage Pocket Watch Collection",
+                    url: "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551964",
+                    currentBid: "87.07",
+                    closeTime: "Dec 28, 2024, 7:29:00 PM",
+                    closeTimeClean: "12/28/2024 19:29:00",
+                    imgThumb: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=100&h=80&fit=crop",
+                    imgMedium: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=200&h=160&fit=crop",
+                    imgFull: "https://images.unsplash.com/photo-1524592094714-0f0654e20314?w=400&h=320&fit=crop",
+                    actionTitle: "Bid Now",
+                    currentBidTitle: "Current Bid",
+                    dateMapLeft: {hours: 2, seconds: 15, minutes: 30, days: 5},
+                    daysLeft: 5,
+                    hoursLeft: 2,
+                    minutesLeft: 30,
+                    secondsLeft: 15,
+                    totalSecondsLeft: 442815,
+                    type: "bid",
+                    quantity: 1
+                },
+                {
+                    id: 5551965,
+                    title: "Antique Jewelry Box Set",
+                    url: "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551965",
+                    currentBid: "156.50",
+                    closeTime: "Dec 27, 2024, 3:15:00 PM",
+                    closeTimeClean: "12/27/2024 15:15:00",
+                    imgThumb: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=100&h=80&fit=crop",
+                    imgMedium: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=200&h=160&fit=crop",
+                    imgFull: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?w=400&h=320&fit=crop",
+                    actionTitle: "Bid Now",
+                    currentBidTitle: "Current Bid",
+                    dateMapLeft: {hours: 18, seconds: 45, minutes: 45, days: 3},
+                    daysLeft: 3,
+                    hoursLeft: 18,
+                    minutesLeft: 45,
+                    secondsLeft: 45,
+                    totalSecondsLeft: 329145,
+                    type: "bid",
+                    quantity: 1
+                },
+                {
+                    id: 5551966,
+                    title: "Rare Baseball Card Collection",
+                    url: "http://shop-cdidemostg1.oc1.servicecdi.com/iSynApp/auctionDisplay.action?sid=1102842&auctionId=5551966",
+                    currentBid: "2,340.00",
+                    closeTime: "Dec 29, 2024, 9:00:00 PM",
+                    closeTimeClean: "12/29/2024 21:00:00",
+                    imgThumb: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=100&h=80&fit=crop",
+                    imgMedium: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=200&h=160&fit=crop",
+                    imgFull: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400&h=320&fit=crop",
+                    actionTitle: "Bid Now",
+                    currentBidTitle: "Current Bid",
+                    dateMapLeft: {hours: 4, seconds: 30, minutes: 15, days: 6},
+                    daysLeft: 6,
+                    hoursLeft: 4,
+                    minutesLeft: 15,
+                    secondsLeft: 30,
+                    totalSecondsLeft: 533730,
+                    type: "bid",
+                    quantity: 1
+                }
+            ]
+        };
+
+        // Demo AuctionWidget for testing
+        class DemoAuctionWidget {
+            constructor(options = {}) {
+                this.containerId = options.containerId || 'demo-widget';
+                this.title = 'Live Auctions';
+                this.subtitle = 'Ending soon - place your bids!';
+                this.siteUrl = 'https://shop-cdidemostg1.oc1.servicecdi.com';
+                this.init();
+            }
+
+            init() {
+                const container = document.getElementById(this.containerId);
+                if (container) {
+                    setTimeout(() => this.render(container, demoData), 500);
+                    this.showLoading(container);
+                }
+            }
+
+            showLoading(container) {
+                container.innerHTML = `
+                    <div class="auction-widget">
+                        <div class="loading">Loading auctions...</div>
+                    </div>
+                `;
+            }
+
+            formatTimeRemaining(item) {
+                const days = item.daysLeft || 0;
+                const hours = item.hoursLeft || 0;
+                const minutes = item.minutesLeft || 0;
+                
+                if (days > 0) {
+                    return `${days}d ${hours}h`;
+                } else if (hours > 0) {
+                    return `${hours}h ${minutes}m`;
+                } else {
+                    return `${minutes}m`;
+                }
+            }
+
+            formatCloseTime(closeTime) {
+                try {
+                    const date = new Date(closeTime);
+                    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                } catch (e) {
+                    return closeTime;
+                }
+            }
+
+            render(container, data) {
+                const items = data.items || [];
+                
+                const auctionsHtml = items.map(item => `
+                    <a href="${item.url}" class="auction-item" target="_blank">
+                        <img src="${item.imgThumb}" alt="${item.title}" class="auction-image">
+                        <div class="auction-content">
+                            <h3 class="auction-title">${item.title}</h3>
+                            <div class="auction-meta">
+                                <div>
+                                    <div class="bid-label">${item.currentBidTitle}</div>
+                                    <div class="current-bid">$${item.currentBid}</div>
+                                </div>
+                                <div class="time-remaining">
+                                    <div class="countdown">${this.formatTimeRemaining(item)}</div>
+                                    <div class="time-label">remaining</div>
+                                </div>
+                            </div>
+                            <div class="auction-actions">
+                                <span class="bid-button">${item.actionTitle}</span>
+                                <span class="close-time">Ends: ${this.formatCloseTime(item.closeTime)}</span>
+                            </div>
+                        </div>
+                    </a>
+                `).join('');
+
+                container.innerHTML = `
+                    <div class="auction-widget">
+                        <div class="widget-header">
+                            <h2 class="widget-title">${this.title}</h2>
+                            <p class="widget-subtitle">${this.subtitle}</p>
+                        </div>
+                        <div class="auctions-container">
+                            ${auctionsHtml}
+                        </div>
+                        <div class="widget-footer">
+                            <a href="${this.siteUrl}" class="view-all-btn" target="_blank">View All Auctions</a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // Initialize demo widget
+        new DemoAuctionWidget();
+    </script>
+</body>
+</html>

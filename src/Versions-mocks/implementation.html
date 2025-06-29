@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CDI Auction Widget - Implementation Guide</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #22a4d8 0%, #274b76 100%);
+            min-height: 100vh;
+        }
+        ul{
+            margin-left: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            text-align: center;
+            padding: 40px 0;
+            color: white;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .header p {
+            font-size: 1.2rem;
+            opacity: 0.9;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+        }
+
+        .content {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 30px;
+        }
+
+        .nav {
+            background: #f8f9fa;
+            padding: 20px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .nav ul {
+            list-style: none;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+        }
+
+        .nav a {
+            color: #274b76;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover {
+            background: #274b76;
+            color: white;
+        }
+
+        .section {
+            padding: 40px;
+        }
+
+        .section h2 {
+            color: #274b76;
+            font-size: 2rem;
+            margin-bottom: 20px;
+            border-bottom: 3px solid #274b76;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #333;
+            font-size: 1.5rem;
+            margin: 25px 0 15px 0;
+        }
+
+        .section h4 {
+            color: #666;
+            font-size: 1.2rem;
+            margin: 20px 0 10px 0;
+        }
+
+        .code-block {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 30px 20px 20px 20px;
+            margin: 20px 0;
+            font-family: 'Monaco', 'Consolas', monospace;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: 'Code';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            background: #22a4d8;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            opacity: 0.8;
+        }
+
+        .highlight {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .highlight::before {
+            content: '💡 ';
+            font-size: 1.2rem;
+        }
+
+        .warning {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .warning::before {
+            content: '⚠️ ';
+            font-size: 1.2rem;
+        }
+
+        .success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+
+        .success::before {
+            content: '✅ ';
+            font-size: 1.2rem;
+        }
+
+        .parameter-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .parameter-table th,
+        .parameter-table td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .parameter-table th {
+            background: #274b76;
+            color: white;
+            font-weight: 600;
+        }
+
+        .parameter-table tr:hover {
+            background: #f8f9fa;
+        }
+
+        .demo-widget {
+            border: 2px dashed #274b76;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            background: #f8f9fa;
+        }
+
+        .steps {
+            counter-reset: step-counter;
+        }
+
+        .step {
+            counter-increment: step-counter;
+            margin: 20px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #274b76;
+            position: relative;
+        }
+
+        .step::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: -15px;
+            top: 15px;
+            background: #274b76;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 30px;
+            color: white;
+            background: rgba(0,0,0,0.1);
+            border-radius: 15px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .nav ul {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>CDI Auction Widget</h1>
+            <p>Interactive auction listings for your website</p>
+        </div>
+
+        <div class="content">
+            <div class="nav">
+                <ul>
+                    <li><a href="#quick-start">Quick Start</a></li>
+                    <li><a href="#installation">Installation</a></li>
+                    <li><a href="#configuration">Configuration</a></li>
+                    <li><a href="#customization">Customization</a></li>
+                    <li><a href="#api">API Reference</a></li>
+                    <li><a href="#examples">Examples</a></li>
+                    <li><a href="#support">Support</a></li>
+                </ul>
+            </div>
+
+            <div id="quick-start" class="section">
+                <h2>Quick Start</h2>
+                <p>Get your auction widget up and running in minutes with this simple implementation.</p>
+
+                <div class="highlight">
+                    <strong>Prerequisites:</strong> Your website needs to support JavaScript and have a container element where the widget will be displayed.
+                </div>
+
+                <div class="steps">
+                    <div class="step">
+                        <h4>Add the Container</h4>
+                        <p>Add a div element to your HTML where you want the widget to appear:</p>
+                        <div class="code-block">
+&lt;div id="cd-ondemand-container"&gt;&lt;/div&gt;</div>
+                    </div>
+
+                    <div class="step">
+                        <h4>Include the Widget Script</h4>
+                        <p>Add the widget script before the closing &lt;/body&gt; tag:</p>
+                        <div class="code-block">
+&lt;script src="path/to/cdi-auction-widget.js"&gt;&lt;/script&gt;</div>
+                    </div>
+
+                    <div class="step">
+                        <h4>Configure (Optional)</h4>
+                        <p>Customize the widget by setting configuration variables before including the script:</p>
+                        <div class="code-block">
+&lt;script&gt;
+    window.myWidgetTitle = "Live Auctions";
+    window.myApiUrl = "https://your-api-endpoint.com/auctions";
+&lt;/script&gt;
+&lt;script src="path/to/cdi-auction-widget.js"&gt;&lt;/script&gt;</div>
+                    </div>
+                </div>
+
+                <div class="success">
+                    <strong>That's it!</strong> The widget will automatically initialize and start displaying auction listings.
+                </div>
+            </div>
+
+            <div id="installation" class="section">
+                <h2>Installation Methods</h2>
+
+                <h3>Method 1: Direct Script Include</h3>
+                <p>The simplest way to add the widget to your site:</p>
+                <div class="code-block">
+&lt;!-- Add container --&gt;
+&lt;div id="cd-ondemand-container"&gt;&lt;/div&gt;
+
+&lt;!-- Add script --&gt;
+&lt;script src="https://your-cdn.com/cdi-auction-widget.js"&gt;&lt;/script&gt;</div>
+
+                <h3>Method 2: Manual Initialization</h3>
+                <p>For more control over when the widget initializes:</p>
+                <div class="code-block">
+&lt;div id="my-custom-container"&gt;&lt;/div&gt;
+
+&lt;script src="https://your-cdn.com/cdi-auction-widget.js"&gt;&lt;/script&gt;
+&lt;script&gt;
+    // Initialize manually
+    const widget = new AuctionSliderWidget({
+        containerId: 'my-custom-container',
+        apiUrl: 'https://your-api.com/auctions',
+        title: 'Featured Auctions',
+        autoScroll: true
+    });
+&lt;/script&gt;</div>
+
+                <h3>Method 3: WordPress Integration</h3>
+                <p>For WordPress sites, add this to your theme's functions.php:</p>
+                <div class="code-block">
+function add_cdi_auction_widget() {
+    wp_enqueue_script('cdi-auction-widget', 
+        'https://your-cdn.com/cdi-auction-widget.js', 
+        array(), '1.0', true);
+}
+add_action('wp_enqueue_scripts', 'add_cdi_auction_widget');</div>
+
+                <div class="warning">
+                    <strong>Important:</strong> Make sure to replace "https://your-cdn.com/cdi-auction-widget.js" with the actual URL where you host the widget script.
+                </div>
+            </div>
+
+            <div id="configuration" class="section">
+                <h2>Configuration Options</h2>
+                <p>Customize the widget behavior by setting these global variables before loading the script:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>window.myContainerId</code></td>
+                            <td>String</td>
+                            <td>"cd-ondemand-container"</td>
+                            <td>ID of the container element</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myApiUrl</code></td>
+                            <td>String</td>
+                            <td>CDI Demo API</td>
+                            <td>API endpoint for auction data</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myWidgetTitle</code></td>
+                            <td>String</td>
+                            <td>"Live Auctions"</td>
+                            <td>Main title displayed above the widget</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myWidgetSubtitle</code></td>
+                            <td>String</td>
+                            <td>"Swipe through exclusive items..."</td>
+                            <td>Subtitle text</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myAutoScrollInterval</code></td>
+                            <td>Number</td>
+                            <td>4000</td>
+                            <td>Auto-scroll interval in milliseconds</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myRefreshInterval</code></td>
+                            <td>Number</td>
+                            <td>30000</td>
+                            <td>Data refresh interval in milliseconds</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Basic Configuration Example</h3>
+                <div class="code-block">
+&lt;script&gt;
+    // Configuration
+    window.myContainerId = "auction-widget";
+    window.myWidgetTitle = "Featured Auctions";
+    window.myWidgetSubtitle = "Don't miss out on these great deals!";
+    window.myApiUrl = "https://api.yoursite.com/auctions";
+    window.myAutoScrollInterval = 5000; // 5 seconds
+    window.myRefreshInterval = 60000;   // 1 minute
+&lt;/script&gt;
+
+&lt;div id="auction-widget"&gt;&lt;/div&gt;
+&lt;script src="cdi-auction-widget.js"&gt;&lt;/script&gt;</div>
+            </div>
+
+            <div id="customization" class="section">
+                <h2>Visual Customization</h2>
+                <p>Customize the widget's appearance with these color and styling options:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Parameter</th>
+                            <th>Type</th>
+                            <th>Default</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>window.myDotColor</code></td>
+                            <td>String</td>
+                            <td>"#274b76"</td>
+                            <td>Color of active navigation dots</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myCounterBgColor</code></td>
+                            <td>String</td>
+                            <td>"#b3f3ff"</td>
+                            <td>Background color of countdown timer</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myCounterFontColor</code></td>
+                            <td>String</td>
+                            <td>"#000000"</td>
+                            <td>Text color of countdown timer</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myButtonBgColor</code></td>
+                            <td>String</td>
+                            <td>"#274b76"</td>
+                            <td>Background color of bid buttons</td>
+                        </tr>
+                        <tr>
+                            <td><code>window.myButtonFontColor</code></td>
+                            <td>String</td>
+                            <td>"#ffffff"</td>
+                            <td>Text color of bid buttons</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Custom Styling Example</h3>
+                <div class="code-block">
+&lt;script&gt;
+    // Custom colors
+    window.myDotColor = "#ff6b6b";
+    window.myCounterBgColor = "#ffe066";
+    window.myCounterFontColor = "#333333";
+    window.myButtonBgColor = "#4ecdc4";
+    window.myButtonFontColor = "#ffffff";
+&lt;/script&gt;</div>
+
+                <h3>Advanced CSS Customization</h3>
+                <p>You can also override widget styles with custom CSS:</p>
+                <div class="code-block">
+&lt;style&gt;
+    /* Custom widget styling */
+    .cdi-auction-widget-container {
+        border: 2px solid #your-color;
+        border-radius: 20px;
+    }
+    
+    .cdi-listing-card {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .cdi-widget-title {
+        font-family: 'Your Custom Font', sans-serif;
+        color: #your-brand-color;
+    }
+&lt;/style&gt;</div>
+
+                <div class="highlight">
+                    <strong>Pro Tip:</strong> Use your browser's developer tools to inspect the widget elements and identify the CSS classes you want to customize.
+                </div>
+            </div>
+
+            <div id="api" class="section">
+                <h2>API Reference</h2>
+
+                <h3>Expected API Response Format</h3>
+                <p>Your API endpoint should return JSON data in this format:</p>
+                <div class="code-block">
+{
+    "jsStatus": "success",
+    "items": [
+        {
+            "id": 123456,
+            "title": "Auction Item Title",
+            "url": "https://yoursite.com/auction/123456",
+            "currentBid": "150.00",
+            "closeTime": "Dec 31, 2024, 11:59:59 PM",
+            "imgMedium": "https://yoursite.com/images/item.jpg",
+            "actionTitle": "Bid Now",
+            "currentBidTitle": "Current Bid"
+        }
+    ]
+}</div>
+
+                <h3>JavaScript API Methods</h3>
+                <p>Access these methods through the widget instance:</p>
+
+                <table class="parameter-table">
+                    <thead>
+                        <tr>
+                            <th>Method</th>
+                            <th>Parameters</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>goToSlide(index)</code></td>
+                            <td>index: Number</td>
+                            <td>Navigate to specific slide</td>
+                        </tr>
+                        <tr>
+                            <td><code>nextSlide()</code></td>
+                            <td>None</td>
+                            <td>Move to next slide</td>
+                        </tr>
+                        <tr>
+                            <td><code>prevSlide()</code></td>
+                            <td>None</td>
+                            <td>Move to previous slide</td>
+                        </tr>
+                        <tr>
+                            <td><code>toggleAutoScroll()</code></td>
+                            <td>None</td>
+                            <td>Toggle auto-scroll on/off</td>
+                        </tr>
+                        <tr>
+                            <td><code>pauseAutoScroll()</code></td>
+                            <td>None</td>
+                            <td>Pause auto-scrolling</td>
+                        </tr>
+                        <tr>
+                            <td><code>resumeAutoScroll()</code></td>
+                            <td>None</td>
+                            <td>Resume auto-scrolling</td>
+                        </tr>
+                        <tr>
+                            <td><code>destroy()</code></td>
+                            <td>None</td>
+                            <td>Clean up widget and intervals</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3>Accessing Widget Instance</h3>
+                <div class="code-block">
+// Access the auto-initialized widget
+const widget = window.auctionWidget;
+
+// Or create your own instance
+const customWidget = new AuctionSliderWidget({
+    containerId: 'my-container',
+    apiUrl: 'https://api.example.com/auctions'
+});
+
+// Use methods
+widget.nextSlide();
+widget.pauseAutoScroll();</div>
+            </div>
+
+            <div id="examples" class="section">
+                <h2>Implementation Examples</h2>
+
+                <h3>Basic Implementation</h3>
+                <div class="code-block">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;My Site with Auction Widget&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Welcome to My Site&lt;/h1&gt;
+    
+    &lt;!-- Auction Widget Container --&gt;
+    &lt;div id="cd-ondemand-container"&gt;&lt;/div&gt;
+    
+    &lt;!-- Widget Script --&gt;
+    &lt;script src="cdi-auction-widget.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</div>
+
+                <h3>Customized Implementation</h3>
+                <div class="code-block">
+&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Custom Auction Widget&lt;/title&gt;
+    &lt;style&gt;
+        /* Custom container styling */
+        #auction-section {
+            margin: 40px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+        }
+    &lt;/style&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div id="auction-section"&gt;
+        &lt;div id="my-auctions"&gt;&lt;/div&gt;
+    &lt;/div&gt;
+    
+    &lt;script&gt;
+        // Custom configuration
+        window.myContainerId = "my-auctions";
+        window.myWidgetTitle = "Featured Auctions";
+        window.myWidgetSubtitle = "Ending soon - don't miss out!";
+        window.myApiUrl = "https://api.mysite.com/featured-auctions";
+        window.myDotColor = "#e74c3c";
+        window.myButtonBgColor = "#3498db";
+        window.myAutoScrollInterval = 6000;
+    &lt;/script&gt;
+    &lt;script src="cdi-auction-widget.js"&gt;&lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</div>
+
+                <h3>Multiple Widgets</h3>
+                <div class="code-block">
+&lt;div id="featured-auctions"&gt;&lt;/div&gt;
+&lt;div id="ending-soon-auctions"&gt;&lt;/div&gt;
+
+&lt;script&gt;
+    // First widget - Featured auctions
+    const featuredWidget = new AuctionSliderWidget({
+        containerId: 'featured-auctions',
+        title: 'Featured Auctions',
+        apiUrl: 'https://api.mysite.com/featured',
+        autoScrollInterval: 5000
+    });
+    
+    // Second widget - Ending soon
+    const endingSoonWidget = new AuctionSliderWidget({
+        containerId: 'ending-soon-auctions',
+        title: 'Ending Soon',
+        subtitle: 'Last chance to bid!',
+        apiUrl: 'https://api.mysite.com/ending-soon',
+        autoScrollInterval: 3000
+    });
+&lt;/script&gt;</div>
+
+                <h3>WordPress Shortcode Integration</h3>
+                <p>Add this to your WordPress theme's functions.php to create a shortcode:</p>
+                <div class="code-block">
+function cdi_auction_widget_shortcode($atts) {
+    $atts = shortcode_atts(array(
+        'title' => 'Live Auctions',
+        'subtitle' => 'Swipe through exclusive items',
+        'api_url' => 'https://your-api.com/auctions',
+        'container_id' => 'cdi-auction-' . uniqid()
+    ), $atts);
+    
+    $output = '&lt;div id="' . $atts['container_id'] . '"&gt;&lt;/div&gt;';
+    $output .= '&lt;script&gt;
+        new AuctionSliderWidget({
+            containerId: "' . $atts['container_id'] . '",
+            title: "' . $atts['title'] . '",
+            subtitle: "' . $atts['subtitle'] . '",
+            apiUrl: "' . $atts['api_url'] . '"
+        });
+    &lt;/script&gt;';
+    
+    return $output;
+}
+add_shortcode('cdi_auctions', 'cdi_auction_widget_shortcode');</div>
+
+                <p>Then use it in your posts/pages:</p>
+                <div class="code-block">
+[cdi_auctions title="Featured Items" api_url="https://api.mysite.com/featured"]</div>
+            </div>
+
+            <div id="support" class="section">
+                <h2>Troubleshooting & Support</h2>
+
+                <h3>Common Issues</h3>
+
+                <h4>Widget Not Showing</h4>
+                <div class="warning">
+                    <strong>Check:</strong>
+                    <ul style="margin-top: 10px;">
+                        <li>Container element exists with correct ID</li>
+                        <li>CORS: Your site is whitelisted to show listings from source domain</li>
+                        <li>JavaScript console for error messages</li>
+                        <li>Script is loaded after the container element</li>
+                        <li>API endpoint is accessible and returns valid JSON</li>
+                    </ul>
+                </div>
+
+                <h4>API Connection Issues</h4>
+                <div class="code-block">
+// Test your API endpoint
+fetch('https://your-api.com/auctions')
+    .then(response => response.json())
+    .then(data => console.log(data))
+    .catch(error => console.error('API Error:', error));</div>
+
+                <h4>Styling Issues</h4>
+                <div class="highlight">
+                    The widget injects its own CSS. If you're having styling conflicts, make sure your custom CSS has higher specificity or use <code>!important</code> sparingly.
+                </div>
+
+                <h3>Performance Optimization</h3>
+                <ul>
+                    <li>Set appropriate refresh intervals based on your data update frequency</li>
+                    <li>Optimize your API response size by only including necessary fields</li>
+                    <li>Use image optimization for auction item photos</li>
+                    <li>Consider lazy loading for images in the widget</li>
+                </ul>
+
+                <h3>Browser Compatibility</h3>
+                <p>The widget supports:</p>
+                <ul>
+                    <li>Chrome 70+</li>
+                    <li>Firefox 65+</li>
+                    <li>Safari 12+</li>
+                    <li>Edge 79+</li>
+                    <li>Mobile browsers (iOS Safari, Chrome Mobile)</li>
+                </ul>
+
+                <h3>Debug Mode</h3>
+                <p>Enable debug mode to see detailed console logs:</p>
+                <div class="code-block">
+window.cdiDebugMode = true;</div>
+
+                <div class="success">
+                    <strong>Need Help?</strong> Contact our support team.
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>&copy; 2025 CDI Auction Widget. All rights reserved.</p>
+        </div>
+    </div>
+</body>
+</html>
