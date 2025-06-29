@@ -311,29 +311,29 @@ window.cdiWidgetMockData = {
     
 
         class AuctionSliderWidget {
+            static DEFAULTS = {
+                containerId: 'cd-ondemand-container',
+                title: 'Live Auctions',
+                subtitle: 'Swipe through exclusive items that are ending soon',
+                autoScroll: true,
+                autoScrollInterval: 4000,
+                refreshInterval: 30000,
+                enableQuickView: true,
+                showBidButton: true,
+                dotColor: "#274b76",
+                counterBgColor: "#b3f3ff",
+                counterFontColor: "#000",
+                buttonBgColor: "#274b76",
+                buttonFontColor: "#fff",
+                borderRadius: "15px",
+                useMockData: true,
+                bidButtonText: '',
+                showDots: true,
+                showArrows: true
+            };
+
             constructor(config = {}) {
-                // Use the value from #apiUrlInput as the default if present
-                this.config = {
-                    containerId: config.containerId || 'cd-ondemand-container',
-                    apiUrl: config.apiUrl,
-                    title: config.widgetTitle || 'Live Auctions',
-                    subtitle: config.widgetSubtitle || 'Swipe through exclusive items that are ending soon',
-                    autoScroll: true,
-                    autoScrollInterval: config.autoScrollInterval || 4000,
-                    refreshInterval: config.refreshInterval || 30000,
-                    enableQuickView: config.enableQuickView !== false,
-                    showBidButton: config.showBidButton !== false,
-                    dotColor: config.dotColor || "#274b76",
-                    counterBgColor: config.counterBgColor || "#b3f3ff",
-                    counterFontColor: config.counterFontColor || "#000",
-                    buttonBgColor: config.buttonBgColor || "#274b76",
-                    buttonFontColor: config.buttonFontColor || "#fff",
-                    borderRadius: config.borderRadius || "15px",
-                    useMockData: typeof config.useMockData !== 'undefined' ? config.useMockData : true,
-                    bidButtonText: config.bidButtonText || '',
-                    showDots: config.showDots !== false,
-                    showArrows: config.showArrows !== false
-                };
+                this.config = { ...AuctionSliderWidget.DEFAULTS, ...config };
                 
                 this.listings = [];
                 this.currentSlide = 0;
