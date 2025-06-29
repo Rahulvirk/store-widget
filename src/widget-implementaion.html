@@ -698,8 +698,12 @@
             <div class="code-block">
 <pre><code>&lt;div id="my-custom-auction-widget"&gt;&lt;/div&gt;
 &lt;script&gt;
-    // The widget will look for this container ID
-    window.myContainerId = 'my-custom-auction-widget';
+    // Configure the widget with custom container ID
+    window.widgetConfig = {
+        containerId: 'my-custom-auction-widget',
+        widgetTitle: 'Live Auctions',
+        widgetSubtitle: 'Swipe through exclusive items that are ending soon'
+    };
 &lt;/script&gt;
 &lt;script src="cd-on-demand.min.js"&gt;&lt;/script&gt;</code></pre>
             </div>
@@ -714,15 +718,56 @@
 
 &lt;script&gt;
     // Initialize first widget
-    window.myContainerId = 'auction-widget-1';
+    window.widgetConfig = {
+        containerId: 'auction-widget-1',
+        widgetTitle: 'Featured Auctions',
+        widgetSubtitle: 'Top items ending soon'
+    };
 &lt;/script&gt;
 &lt;script src="cd-on-demand.min.js"&gt;&lt;/script&gt;
 
 &lt;script&gt;
     // Initialize second widget with different config
-    window.myContainerId = 'auction-widget-2';
-    // Load the script again or use a different approach
+    window.widgetConfig = {
+        containerId: 'auction-widget-2',
+        widgetTitle: 'New Arrivals',
+        widgetSubtitle: 'Fresh items just listed',
+        dotColor: '#ff6b6b',
+        buttonBgColor: '#ff6b6b'
+    };
+    // Create a new instance manually
+    window.auctionWidget2 = new AuctionSliderWidget(window.widgetConfig);
 &lt;/script&gt;</code></pre>
+            </div>
+
+            <h3>Advanced Configuration</h3>
+            <div class="code-block">
+<pre><code>&lt;div id="my-auction-widget"&gt;&lt;/div&gt;
+&lt;script&gt;
+    // Full configuration example
+    window.widgetConfig = {
+        containerId: 'my-auction-widget',
+        apiUrl: 'https://your-api.com/auctions',
+        widgetTitle: 'Live Auctions',
+        widgetSubtitle: 'Bid on exclusive items',
+        autoScroll: true,
+        autoScrollInterval: 5000,
+        refreshInterval: 60000,
+        enableQuickView: true,
+        showBidButton: true,
+        showDots: true,
+        showArrows: true,
+        bidButtonText: 'Place Bid',
+        borderRadius: '20px',
+        dotColor: '#4fc3f7',
+        counterBgColor: '#e3f2fd',
+        counterFontColor: '#1976d2',
+        buttonBgColor: '#4fc3f7',
+        buttonFontColor: '#ffffff',
+        useMockData: false
+    };
+&lt;/script&gt;
+&lt;script src="cd-on-demand.min.js"&gt;&lt;/script&gt;</code></pre>
             </div>
 
             <h3>Integration with Existing Page</h3>
