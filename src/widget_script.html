@@ -313,8 +313,8 @@ window.cdiWidgetMockData = {
         class AuctionSliderWidget {
             static DEFAULTS = {
                 containerId: 'cd-ondemand-container',
-                title: 'Live Auctions',
-                subtitle: 'Swipe through exclusive items that are ending soon',
+                widgetTitle: 'Live Auctions',
+                widgetSubtitle: 'Swipe through exclusive items that are ending soon',
                 autoScroll: true,
                 autoScrollInterval: 4000,
                 refreshInterval: 30000,
@@ -998,8 +998,8 @@ window.cdiWidgetMockData = {
             container.innerHTML = `
                     <div class="cdi-auction-widget-container">
                         <div class="cdi-widget-header">
-                            <h1 class="cdi-widget-title">${this.config.title}</h1>
-                            <p class="cdi-widget-subtitle">${this.config.subtitle}</p>
+                            <h1 class="cdi-widget-title">${this.config.widgetTitle}</h1>
+                            <p class="cdi-widget-subtitle">${this.config.widgetSubtitle}</p>
                     </div>
                         <div class="cdi-auto-scroll-indicator" id="autoScrollIndicator">
                         <span id="autoScrollText">Auto-scroll</span>
